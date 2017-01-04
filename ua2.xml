@@ -1,0 +1,26 @@
+<?xml version="1.0" enconding="UTF-8"?>
+
+<config>
+    <account> 
+        <username>zape@moreno</username>
+        <password>maslocuras</password> 
+    </acount>
+    <uaserver>
+        <ip>127.0.0.1</ip> 
+        <puerto>9876</puerto>
+    </uaserver>
+    <rtpaudio>
+        <puerto>8765</puerto>
+    </rtpaudio>
+    <regproxy>
+        <ip>127.0.0.1</ip> 
+        <puerto>7654</puerto>
+    </regproxy>
+    <log>
+        <path>log_ua2.txt</path>
+    </log>
+    <audio> 
+        <path>cancion.mp3</path>
+    </audio> 
+</config>
+    
