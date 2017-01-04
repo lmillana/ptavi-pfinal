@@ -97,7 +97,7 @@ if __name__ == "__main__":
     my_socket.connect((IP_PROXY, PORT_PROXY))
 
     # Creamos servidor de eco y escuchamos
-    serv = socketserver.UDPServer((IP, PORT), EchoHandler)
+    serv = socketserver.UDPServer((IP, PORT), ProxyHandler)
     print("Listening...")
     
     try:
