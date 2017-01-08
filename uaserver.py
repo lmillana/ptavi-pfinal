@@ -26,38 +26,59 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
     """
     Proxy server class.
     """
+    RTP = {'IP': '',
+           'PORT': 0}
     METHODS = ['INVITE', 'ACK', 'BYE']
 
     def handle(self):
         # Escribe dirección y puerto del cliente (de tupla client_address)
+        IP_CLIENT = str(self.client_address[0])
+        PORT_CLIENT = int(self.client_address[1])
+        
         while 1:
             # Leyendo línea a línea lo que nos envía el cliente
             text = self.rfile.read()
-            line = self.rfile.read()
+            LINE = line.decode('utf-8')
 
-            method = text.decode('utf-8').split(' ')[0]
-            print("Hemos recibido tu peticion:", method, '\r\n\r\n')
+            method = text.decode('utf-8').split(' ')[0].upper()
+            print("Hemos recibido tu peticion:\r\n\", LINE)
+            
+            #Escribimos los mensajes de recepción en el fichero LOG:
+            FICH_LOG(PATH_LOG, 'Received', IP_PROXY, PORT_PROXY,
 
             if not method in self.METHODS:
-                self.wfile.write(b'SIP/2.0 405 Method Not Allowed\r\n\r\n')
+                answer = 'SIP/2.0 405 Method Not Allowed\r\n\r\n'
 
             elif method == 'INVITE':
-                to_send = b"SIP/2.0 100 Trying\r\n\r\n"
-                to_send += b"SIP/2.0 180 Ring\r\n\r\n"
-                to_send += b"SIP/2.0 200 OK\r\n\r\n"
-                self.wfile.write(to_send)
+                asnwer = 'SIP/2.0 100 Trying\r\n\r\n'
+                answer += 'SIP/2.0 180 Ring\r\n\r\n'
+                answer += 'SIP/2.0 200 OK\r\n\r\n'
+                #Añadimos las cabeceras: Header + Separator:
+                answer += 'Content-Type: application/sdp\r\n\r\n'
+                #Message Body:
+                answer += 'v=0\r\n' + 'o=' + USERNAME + IP + '\r\n'
+                answer += 's=Prueba' + '\r\n' + 't=0' + '\r\n'
+                answer += 'm=audio' + PORT_AUDIO + 'RTP' + '\r\n'
+                print("Codigo de respuesta a INVITE: \r\n", answer)
 
             elif method == 'ACK':
             # aEjecutar es un string con lo que se ha de ejecutar en la shell
-                aEjecutar = ('./mp32rtp -i 127.0.0.1 -p 23032 < ' + FICH)
+                aEjecutar = './mp32rtp -i ' +  self.RTP['IP']
+                aEjecutar += '-p' +  self.RTP['PORT']
+                aEjecutar +=  '< ' + PATH_AUDIO)
                 print ("Vamos a ejecutar", aEjecutar)
                 os.system(aEjecutar)
 
             elif method == 'BYE':
-                self.wfile.write(b'SIP/2.0 200 OK\r\n\r\n')
+                answer = 'SIP/2.0 200 OK\r\n\r\n'
+                print("Codigo de respuesta a BYE: \r\n", answer)
 
             else:
-                self.wfile.write(b'SIP/2.0 400 Bad Request\r\n\r\n')
+                answer = 'SIP/2.0 400 Bad Request\r\n\r\n')
+
+            #Enviamos el mensaje de respuesta:
+            self.wfile.write(bytes(answer, 'utf-8'))
+            FICH_LOG(PATH_LOG, 'Sent to', IP_CLIENT, PORT_CLIENT, '')
 
             # Si no hay más líneas salimos del bucle infinito
             if not line:
@@ -102,5 +123,6 @@ if __name__ == "__main__":
     
     try:
         serv.serve_forever()
-    except KeyboardInterrupt:
-        print("Finalizado servidor")
+    except:
+        FICH_LOG(PATH_LOG, 'Error', IP_PROXY, PORT_PROXY, '')
+        sys.exit("ERROR: No server listening")
