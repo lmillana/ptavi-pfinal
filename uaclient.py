@@ -10,20 +10,20 @@ import os
 import time
 import hashlib
 
-def FICH_LOG(fichero, EVENT, IP, PORT, Line):
+def FICH_LOG(fichero, EVENT, IP, PORT, LINE):
     fich = open(fichero, 'a')
     TIME_ACT = time.strftime("%Y%m%d%H%M%S", time.gmtime(time.time)) 
     
     if EVENT == 'Error':
-        datos = TIME_ACT + EVENT + 'No server listening at'
-        datos += IP + "Port " + PORT + '\r\n'
+        data = TIME_ACT + EVENT + 'No server listening at'
+        data += IP + "Port " + PORT + '\r\n'
     elif EVENT == 'Send to' or EVENT == 'Received':
-        datos = TIME_ACT + EVENT + IP + ':' + PORT + ':'
-        datos += Line + '\r\n'
+        data = TIME_ACT + EVENT + IP + ':' + PORT + ':'
+        data += LINE + '\r\n'
     else: #Starting or Finishing
-        datos = TIME_ACT + EVENT + '\r\n'
+        data = TIME_ACT + EVENT + '\r\n'
     
-    fich.write(datos)
+    fich.write(data)
     fich.close()
 
 
@@ -31,6 +31,7 @@ if __name__ == "__main__":
     # Cliente UDP simple SIP
 
     if len(sys.argv) != 4:
+        print('SIP/2.0 400 Bad Request' + '\r\n')
         sys.exit("Usage: python3 uaclient.py config method option")
 
     # Dirección IP del servidor:
@@ -38,7 +39,7 @@ if __name__ == "__main__":
         CONFIG = sys.argv[1]
         METHOD = sys.argv[2]
         PORT = sys.argv[3]
-    except Exception:
+    except IndexError:
         sys.exit("Usage: python3 uaclient.py config method option")
 
     #Abrimos el fichero XML
@@ -75,11 +76,25 @@ if __name__ == "__main__":
         sys.exit("Usage: python3 uaclient.py config method option")
 
     elif method == 'REGISTER':
+        #Escribimos en fichero LOG:
+        EVENT = 'Starting...'
+        FICH_LOG(PATH_LOG, EVENT,'','','')
+        #Register sin Autenticación:
+        LINE = method + 'sip:' + USERNAME + ':' + PORT
+        LINE += 'SIP/2.0\r\n' + 'Expires: ' + OPTION + '\r\n'
 
     elif method == 'INVITE':
+        #Añadimos las correspondientes cabeceras:
+        LINE = method + 'sip: ' + OPTION + 'SIP/2.0\r\n'
+        #Header Field + Separator:
+        LINE += 'Content-Type: application/sdp\r\n\r\n'
+        #Message Body:
+        LINE += 'v=0\r\n' + 'o= ' + USERNAME + ' ' + IP
+        LINE += 's=Prueba' + '\r\n' + 't=0' + '\r\n'
+        LINE += 'm=audio' + PORT_AUDIO + 'RTP' + '\r\n'
 
     elif method == 'BYE':
-      
+        LINE = method + 'sip:' + OPTION + 'SIP/2.0\r\n'
 
     try:
         # Creamos el socket, lo configuramos y lo atamos a un servidor/puerto
@@ -88,21 +103,25 @@ if __name__ == "__main__":
         my_socket.connect((IP_PROXY, PORT_PROXY))
 
         #Enviando:
+        print("Enviando: \r\n" + LINE) 
         my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
-    except:
+        #Escribimos en el fichero LOG: 
+        FICH_LOG(PATH_LOG, 'Send to', IP_PROXY, PORT_PROXY, LINE)
+    except socket.Error:
         sys.exit("ERROR: No server listening")
 
     try:
         #Recibimos datos:
         data = my_socket.recv(1024)
+        data_dec = data.decode('utf-8')
+        print("Recibimos: \r\n" + data_dec)
+        #Escribimos en el fichero LOG el mensaje recibido:
+        FICH_LOG(PATH_LOG,'Received', IP_PROXY, PORT_PROXY,data_dec)
     except socket.Error:
-        sys.exit('ERROR: No server listening')
+        #Escribimos en el fichero LOG:
+        FICH_LOG(PATH_LOG, 'Error', IP, PORT, '')
+        sys.exit(FICH_LOG)
 
-    #Lo que recibo antes del asentimiento.
-    print("Recibimos\r\n" + data.decode('utf-8'))
-
-    #Metodo de asentimiento:
-    message = data.decode('utf-8').split('\r\n\r\n')[0:-1]
 
     print("Terminando socket...")
 
