@@ -1,0 +1,16 @@
+<?xml version="1.0" enconding="UTF-8"?>
+
+<config>
+    <server>
+        <name>superguay</name>
+        <ip>127.0.0.1</IP>
+        <puerto>7777</puerto>
+    </server>
+    <database>
+        <path>database.txt</path>
+        <password_path>passwords.txt</password_path>
+    </database>
+    <log>
+        <path>log_prox.txt</path>
+    </log>
+</config>
