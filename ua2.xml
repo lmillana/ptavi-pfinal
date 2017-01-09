@@ -3,7 +3,7 @@
 <config>
     <account> 
         <username>zape@moreno</username>
-        <password>maslocuras</password> 
+        <passwd>maslocuras</passwd> 
     </acount>
     <uaserver>
         <ip>127.0.0.1</ip> 
