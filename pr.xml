@@ -3,12 +3,12 @@
 <config>
     <server>
         <name>superguay</name>
-        <ip>127.0.0.1</IP>
+        <ip>127.0.0.1</ip>
         <puerto>7777</puerto>
     </server>
     <database>
         <path>database.txt</path>
-        <password_path>passwords.txt</password_path>
+        <passwdpath>passwords.txt</passwdpath>
     </database>
     <log>
         <path>log_prox.txt</path>
