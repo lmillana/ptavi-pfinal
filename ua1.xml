@@ -3,7 +3,7 @@
 <config>
     <account>
          <username>zipi@rubio.com </username>
-         <password>locuras</password>
+         <passwd>locuras</passwd>
     </acount>
     <uaserver>
         <ip>127.0.0.1</ip> 
