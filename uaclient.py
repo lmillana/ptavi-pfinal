@@ -10,19 +10,20 @@ import os
 import time
 import hashlib
 
+
 def FICH_LOG(fichero, EVENT, IP, PORT, LINE):
     fich = open(fichero, 'a')
     TIME_ACT = time.strftime("%Y%m%d%H%M%S", time.gmtime(time.time)) 
     
     if EVENT == 'Error':
-        data = TIME_ACT + EVENT + 'No server listening at'
-        data += IP + "Port " + PORT + '\r\n'
-    elif EVENT == 'Send to' or EVENT == 'Received':
+        data = TIME_ACT + EVENT + ': No server listening at'
+        data += IP + "port " + PORT + '\r\n'
+    elif EVENT == 'Send to' or EVENT == 'Received from':
         data = TIME_ACT + EVENT + IP + ':' + PORT + ':'
         data += LINE + '\r\n'
     else: #Starting or Finishing
         data = TIME_ACT + EVENT + '\r\n'
-    
+
     fich.write(data)
     fich.close()
 
@@ -34,11 +35,15 @@ if __name__ == "__main__":
         print('SIP/2.0 400 Bad Request' + '\r\n')
         sys.exit("Usage: python3 uaclient.py config method option")
 
-    # Dirección IP del servidor:
     try:
         CONFIG = sys.argv[1]
         METHOD = sys.argv[2]
-        PORT = sys.argv[3]
+        if METHOD = 'REGISTER':
+            EXPIRES = sys.argv[3]
+        else:
+        #METHOD = 'INVITE' or METHOD = 'BYE':
+            USER = sys.argv[3]
+
     except IndexError:
         sys.exit("Usage: python3 uaclient.py config method option")
 
@@ -47,9 +52,9 @@ if __name__ == "__main__":
     line = fich.readlines()
     fich.close()
 
-    #USERNAME + PASSWORD:
+    #CLIENT, USERNAME + PASSWORD:
     USERNAME = line[4].split(">")[1].split("<")[0]
-    PASSWORD = line[5].split(">")[1].split("<")[0]
+    PASSWD = line[5].split(">")[1].split("<")[0]
 
     #UASERVER, IP + PUERTO:
     IP = line[8].split(">")[1].split("<")[0]
@@ -69,7 +74,7 @@ if __name__ == "__main__":
     PATH_AUDIO = line[22].split(">")[1].split("<")[0]
 
 
-    METHODS = ['INVITE', 'ACK', 'BYE']
+    METHODS = ['REGISTER', 'INVITE', 'BYE']
 
     if not method in self.METHODS:
         print("Method have to be: REGISTER, INVITE OR BYE")
@@ -77,24 +82,27 @@ if __name__ == "__main__":
 
     elif method == 'REGISTER':
         #Escribimos en fichero LOG:
-        EVENT = 'Starting...'
-        FICH_LOG(PATH_LOG, EVENT,'','','')
+        FICH_LOG(PATH_LOG, 'Starting...','','','')
         #Register sin Autenticación:
         LINE = method + 'sip:' + USERNAME + ':' + PORT
-        LINE += 'SIP/2.0\r\n' + 'Expires: ' + OPTION + '\r\n'
+        LINE += 'SIP/2.0\r\n' + 'Expires: ' + EXPIRES + '\r\n'
 
     elif method == 'INVITE':
         #Añadimos las correspondientes cabeceras:
-        LINE = method + 'sip: ' + OPTION + 'SIP/2.0\r\n'
+        LINE = method + 'sip:' + USER + 'SIP/2.0\r\n'
         #Header Field + Separator:
         LINE += 'Content-Type: application/sdp\r\n\r\n'
         #Message Body:
-        LINE += 'v=0\r\n' + 'o= ' + USERNAME + ' ' + IP
+        LINE += 'v=0\r\n' + 'o=' + USERNAME + ' ' + IP
         LINE += 's=Prueba' + '\r\n' + 't=0' + '\r\n'
         LINE += 'm=audio' + PORT_AUDIO + 'RTP' + '\r\n'
 
+
     elif method == 'BYE':
-        LINE = method + 'sip:' + OPTION + 'SIP/2.0\r\n'
+        #Escribimos en fichero LOG:
+        FICH_LOG(PATH_LOG, 'Finishing.','','','')
+
+        LINE = method + 'sip:' + USER + 'SIP/2.0\r\n'
 
     try:
         # Creamos el socket, lo configuramos y lo atamos a un servidor/puerto
@@ -103,9 +111,9 @@ if __name__ == "__main__":
         my_socket.connect((IP_PROXY, PORT_PROXY))
 
         #Enviando:
-        print("Enviando: \r\n" + LINE) 
+        print("Sending: \r\n" + LINE) 
         my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
-        #Escribimos en el fichero LOG: 
+        #Escribimos en el fichero LOG:
         FICH_LOG(PATH_LOG, 'Send to', IP_PROXY, PORT_PROXY, LINE)
     except socket.Error:
         sys.exit("ERROR: No server listening")
@@ -113,18 +121,52 @@ if __name__ == "__main__":
     try:
         #Recibimos datos:
         data = my_socket.recv(1024)
-        data_dec = data.decode('utf-8')
-        print("Recibimos: \r\n" + data_dec)
-        #Escribimos en el fichero LOG el mensaje recibido:
-        FICH_LOG(PATH_LOG,'Received', IP_PROXY, PORT_PROXY,data_dec)
+        print("Receiving: \r\n" + data.decode('utf-8')
+
     except socket.Error:
         #Escribimos en el fichero LOG:
         FICH_LOG(PATH_LOG, 'Error', IP, PORT, '')
         sys.exit(FICH_LOG)
 
+    #Respuesta recibida: 
+    response = data.decode('utf-8').split("\r\n")
+    LINE = ' '.join(response)
 
-    print("Terminando socket...")
+    #Escribimos en el fichero LOG el mensaje recibido:
+    FICH_LOG(PATH_LOG,'Received from', IP_PROXY, PORT_PROXY, LINE)
 
-    # Cerramos todo
-    my_socket.close()
-    print("Fin.")
+    #Comportamiento según la respuesta:
+    if response[0] == 'SIP/2.0 401 Unauthorized':
+        #Enviamos Register con Autenticación:
+        m = hashlib.md5()
+        NONCE = response[1].split('=')[-1]
+        m.update(b'NONCE')
+        m.update(b'PASSWD')
+
+        LINE += 'WWW Authenticate: Digest response= ' 
+        LINE += m.hexdigest() + '\r\n'
+
+        my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
+        #Escribimos en el fichero LOG:
+        FICH_LOG(PATH_LOG, 'Send to', IP_PROXY, PORT_PROXY, LINE)
+
+    elif response[0] == 'SIP/2.0 100 Trying':
+        #TRYING + RINGING + OK:
+        LINE = method + 'sip:' + USER + ' SIP/2.0'
+
+        #Envio RTP:
+        #IP_AUDIO = ¡¡¡¡¡¡¡FALTA!!!!!!! 
+        # aEjecutar es un string con lo que se ha de ejecutar en la shell
+        aEjecutar = './mp32rtp -i ' +  'INCOMPLETO'
+        aEjecutar += '-p' +  PORT_AUDIO
+        aEjecutar +=  '< ' + PATH_AUDIO)
+
+        print ("Let's run", aEjecutar)
+        os.system(aEjecutar)
+
+    elif response[0] == 'SIP/2.0 200 OK':
+        print("Ending socket...")
+
+        # Cerramos todo
+        my_socket.close()
+        print("Fin.")
