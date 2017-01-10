@@ -13,15 +13,16 @@ import hashlib
 
 def FICH_LOG(fichero, EVENT, IP, PORT, LINE):
     fich = open(fichero, 'a')
-    TIME_ACT = time.strftime("%Y%m%d%H%M%S", time.gmtime(time.time)) 
-    
+    TIME_ACT = time.strftime("%Y%m%d%H%M%S", time.gmtime(time.time()))
+
     if EVENT == 'Error':
         data = TIME_ACT + EVENT + ': No server listening at'
         data += IP + "port " + PORT + '\r\n'
     elif EVENT == 'Send to' or EVENT == 'Received from':
         data = TIME_ACT + EVENT + IP + ':' + PORT + ':'
         data += LINE + '\r\n'
-    else: #Starting or Finishing
+    else:
+        #Starting or Finishing
         data = TIME_ACT + EVENT + '\r\n'
 
     fich.write(data)
@@ -32,13 +33,17 @@ if __name__ == "__main__":
     # Cliente UDP simple SIP
 
     if len(sys.argv) != 4:
-        print('SIP/2.0 400 Bad Request' + '\r\n')
         sys.exit("Usage: python3 uaclient.py config method option")
 
     try:
         CONFIG = sys.argv[1]
-        METHOD = sys.argv[2]
-        if METHOD = 'REGISTER':
+
+        if not os.path.exists(CONFIG):
+            print("File doesnt exist!")
+            sys.exit("Usage: python3 uaserver.py config")
+
+        METHOD = sys.argv[2].upper()
+        if METHOD == 'REGISTER':
             EXPIRES = sys.argv[3]
         else:
         #METHOD = 'INVITE' or METHOD = 'BYE':
@@ -73,23 +78,22 @@ if __name__ == "__main__":
     #AUDIO, PATH(localizacion del ficherod el audio):
     PATH_AUDIO = line[22].split(">")[1].split("<")[0]
 
-
     METHODS = ['REGISTER', 'INVITE', 'BYE']
 
-    if not method in self.METHODS:
+    if not METHOD in METHODS:
         print("Method have to be: REGISTER, INVITE OR BYE")
         sys.exit("Usage: python3 uaclient.py config method option")
 
-    elif method == 'REGISTER':
-        #Escribimos en fichero LOG:
-        FICH_LOG(PATH_LOG, 'Starting...','','','')
+    elif METHOD == 'REGISTER':
+        #Escribimos en el fichero LOG:
+        FICH_LOG(PATH_LOG, 'Starting...', '', '',  '')
         #Register sin Autenticación:
-        LINE = method + 'sip:' + USERNAME + ':' + PORT
-        LINE += 'SIP/2.0\r\n' + 'Expires: ' + EXPIRES + '\r\n'
+        LINE = METHOD + ' sip:' + USERNAME + ':' + PORT
+        LINE += ' SIP/2.0\r\n' + 'Expires: ' + EXPIRES + '\r\n'
 
-    elif method == 'INVITE':
+    elif METHOD == 'INVITE':
         #Añadimos las correspondientes cabeceras:
-        LINE = method + 'sip:' + USER + 'SIP/2.0\r\n'
+        LINE = METHOD + 'sip:' + USER + 'SIP/2.0\r\n'
         #Header Field + Separator:
         LINE += 'Content-Type: application/sdp\r\n\r\n'
         #Message Body:
@@ -97,43 +101,41 @@ if __name__ == "__main__":
         LINE += 's=Prueba' + '\r\n' + 't=0' + '\r\n'
         LINE += 'm=audio' + PORT_AUDIO + 'RTP' + '\r\n'
 
+    elif METHOD == 'BYE':
+        LINE = METHOD + 'sip:' + USER + 'SIP/2.0\r\n'
 
-    elif method == 'BYE':
-        #Escribimos en fichero LOG:
-        FICH_LOG(PATH_LOG, 'Finishing.','','','')
-
-        LINE = method + 'sip:' + USER + 'SIP/2.0\r\n'
+    #Escribimos en fichero LOG:
+    FICH_LOG(PATH_LOG, 'Sent to', IP_PROXY, PORT_PROXY, LINE)
 
     try:
         # Creamos el socket, lo configuramos y lo atamos a un servidor/puerto
         my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        my_socket.connect((IP_PROXY, PORT_PROXY))
+        my_socket.connect((IP_PROXY, int(PORT_PROXY)))
 
         #Enviando:
-        print("Sending: \r\n" + LINE) 
+        print("Sending: \r\n" + LINE)
         my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
         #Escribimos en el fichero LOG:
         FICH_LOG(PATH_LOG, 'Send to', IP_PROXY, PORT_PROXY, LINE)
-    except socket.Error:
+    except socket.error:
         sys.exit("ERROR: No server listening")
 
     try:
         #Recibimos datos:
         data = my_socket.recv(1024)
-        print("Receiving: \r\n" + data.decode('utf-8')
-
-    except socket.Error:
+        print("Receiving: \r\n" + data.decode('utf-8'))
+    except socket.error:
         #Escribimos en el fichero LOG:
         FICH_LOG(PATH_LOG, 'Error', IP, PORT, '')
         sys.exit(FICH_LOG)
 
-    #Respuesta recibida: 
+    #Respuesta recibida del PROXY:
     response = data.decode('utf-8').split("\r\n")
     LINE = ' '.join(response)
 
     #Escribimos en el fichero LOG el mensaje recibido:
-    FICH_LOG(PATH_LOG,'Received from', IP_PROXY, PORT_PROXY, LINE)
+    FICH_LOG(PATH_LOG, 'Received from', IP_PROXY, PORT_PROXY, LINE)
 
     #Comportamiento según la respuesta:
     if response[0] == 'SIP/2.0 401 Unauthorized':
@@ -142,29 +144,34 @@ if __name__ == "__main__":
         NONCE = response[1].split('=')[-1]
         m.update(b'NONCE')
         m.update(b'PASSWD')
+        new_response = m.hexdigest()
 
-        LINE += 'WWW Authenticate: Digest response= ' 
-        LINE += m.hexdigest() + '\r\n'
+        LINE += 'WWW Authenticate: Digest response= '
+        LINE += new_response + '\r\n'
 
         my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
         #Escribimos en el fichero LOG:
         FICH_LOG(PATH_LOG, 'Send to', IP_PROXY, PORT_PROXY, LINE)
 
     elif response[0] == 'SIP/2.0 100 Trying':
-        #TRYING + RINGING + OK:
+        #Escribimos en el fichero LOG:
+        LINE = '100 Trying + 180 Ringing + 200 OK'
+        FICH_LOG(PATH_LOG, 'Received from', IP_PROXY, PORT_PROXY, LINE)
+        #Respuesta a INVITE: TRYING + RINGING + OK:
         LINE = method + 'sip:' + USER + ' SIP/2.0'
 
         #Envio RTP:
-        #IP_AUDIO = ¡¡¡¡¡¡¡FALTA!!!!!!! 
         # aEjecutar es un string con lo que se ha de ejecutar en la shell
-        aEjecutar = './mp32rtp -i ' +  'INCOMPLETO'
-        aEjecutar += '-p' +  PORT_AUDIO
-        aEjecutar +=  '< ' + PATH_AUDIO)
+        aEjecutar = './mp32rtp -i ' + '127.0.0.1'
+        aEjecutar += '-p' + PORT_AUDIO
+        aEjecutar += '< ' + PATH_AUDIO
 
         print ("Let's run", aEjecutar)
         os.system(aEjecutar)
 
     elif response[0] == 'SIP/2.0 200 OK':
+        #Escribimos en el fichero LOG:
+        FICH_LOG(PATH_LOG, 'Finishing.', '', '', '')
         print("Ending socket...")
 
         # Cerramos todo
