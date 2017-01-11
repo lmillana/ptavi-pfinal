@@ -16,14 +16,14 @@ def FICH_LOG(fichero, EVENT, IP, PORT, LINE):
     TIME_ACT = time.strftime("%Y%m%d%H%M%S", time.gmtime(time.time()))
 
     if EVENT == 'Error':
-        data = TIME_ACT + EVENT + ': No server listening at'
-        data += IP + "port " + PORT + '\r\n'
+        data = TIME_ACT + ' ' + EVENT + ': No server listening at '
+        data += IP + ' port ' + PORT + '\r\n'
     elif EVENT == 'Send to' or EVENT == 'Received from':
-        data = TIME_ACT + EVENT + IP + ':' + PORT + ':'
-        data += LINE + '\r\n'
+        data = TIME_ACT + ' ' + EVENT + ' ' + IP + ':' + PORT + ':'
+        data += ' ' + LINE + '\r\n'
     else:
         #Starting or Finishing
-        data = TIME_ACT + EVENT + '\r\n'
+        data = TIME_ACT + ' ' + EVENT + '\r\n'
 
     fich.write(data)
     fich.close()
@@ -93,19 +93,19 @@ if __name__ == "__main__":
 
     elif METHOD == 'INVITE':
         #Añadimos las correspondientes cabeceras:
-        LINE = METHOD + 'sip:' + USER + 'SIP/2.0\r\n'
+        LINE = METHOD + ' sip:' + USER + ' SIP/2.0\r\n'
         #Header Field + Separator:
         LINE += 'Content-Type: application/sdp\r\n\r\n'
         #Message Body:
-        LINE += 'v=0\r\n' + 'o=' + USERNAME + ' ' + IP
-        LINE += 's=Prueba' + '\r\n' + 't=0' + '\r\n'
-        LINE += 'm=audio' + PORT_AUDIO + 'RTP' + '\r\n'
+        LINE += 'v=0\r\n' + 'o=' + USERNAME + IP + '\r\n'
+        LINE += 's=prueba' + '\r\n' + 't=0' + '\r\n'
+        LINE += 'm=audio ' + PORT_AUDIO + ' RTP' + '\r\n'
 
     elif METHOD == 'BYE':
-        LINE = METHOD + 'sip:' + USER + 'SIP/2.0\r\n'
+        LINE = METHOD + ' sip:' + USER + ' SIP/2.0\r\n'
 
     #Escribimos en fichero LOG:
-    FICH_LOG(PATH_LOG, 'Sent to', IP_PROXY, PORT_PROXY, LINE)
+    #FICH_LOG(PATH_LOG, 'Sent to', IP_PROXY, PORT_PROXY, LINE)
 
     try:
         # Creamos el socket, lo configuramos y lo atamos a un servidor/puerto
