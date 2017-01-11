@@ -14,7 +14,7 @@
     </rtpaudio>
     <regproxy>
         <ip>127.0.0.1</ip> 
-        <puerto>7070</puerto>
+        <puerto>7777</puerto>
     </regproxy>
     <log>
         <path>log_ua1.txt</path>
