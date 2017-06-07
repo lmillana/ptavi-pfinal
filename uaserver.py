@@ -8,7 +8,65 @@ import socket
 import socketserver
 import os
 from uaclient import FICH_LOG
+from xml.sax.handler import ContentHandler
 
+class XMLHandler(ContentHandler):
+	def __init__(self):
+	# Iniciamos variables
+
+		#Diccionario delos datos de las etiquetas:
+		self.tag_dic = {}
+		#Lista donde guardar los diccionarios:
+		self.list_dic = []
+
+	def startElement(self,name,attrs):
+		if name == 'account':
+			self.tag_dic['username'] = attrs.get('username','--')
+			self.tag_dic['passwd'] = attrs.get('passwd','--')
+			#Añadimos:
+			self.list_dic.append(self.tag_dic)
+			#Vaciamos el diccionario:
+			self.tag_dic = {}
+
+		elif name == 'uaserver':
+			self.tag_dic['UAS_IP'] = attrs.get('ip', '--')
+			self.tag_dic['UAS_Port'] = attrs.get('port','--')
+			#Añadimos:
+			self.list_dic.append(self.tag_dic)
+			#Vaciamos el diccionario:
+			self.tag_dic = {}
+
+		elif name == 'rtpaudio':
+			self.tag_dic['RTP_Port'] = attrs.get('port', '--')
+			#Añadimos:
+			self.list_dic.append(self.tag_dic)
+			#Vaciamos el diccionario:
+			self.tag_dic = {}
+
+		elif name == 'regproxy':
+			self.tag_dic['Reg_IP'] = attrs.get('ip', '--')
+			self.tag_dic['Reg_Port'] = attrs.get('port','--')
+			#Añadimos:
+			self.list_dic.append(self.tag_dic)
+			#Vaciamos el diccionario:
+			self.tag_dic = {}
+
+		elif name == 'log':
+			self.tag_dic['PATH'] = attrs.get('path','--')
+			#Añadimos:
+			self.list_dic.append(self.tag_dic)
+			#Vaciamos el diccionario:
+			self.tag_dic = {}
+
+		elif name == 'audio':
+			self.tag_dic['Audio_PATH'] = attrs.get('path','--')
+			#Añadimos:
+			self.list_dic.append(tag_dic)
+			#Vaciamos el diccionario:
+			self.tag_dic = {}
+
+	def getData(self):
+		return self.list_dic
 
 class ProxyHandler(socketserver.DatagramRequestHandler):
     """
@@ -28,6 +86,10 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
             # Leyendo línea a línea lo que nos envía el cliente
             text = self.rfile.read()
             LINE = line.decode('utf-8')
+
+            #Para salir del bucle (si no hay mas lineas):
+            if not LINE:
+            	break
 
             method = text.decode('utf-8').split(' ')[0]
             print("Hemos recibido tu peticion:\r\n", LINE)
@@ -49,7 +111,7 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
                 #Añadimos las cabeceras: Header + Separator:
                 answer += 'Content-Type: application/sdp\r\n\r\n'
                 #Message Body:
-                answer += 'v=0\r\n' + 'o=' + USERNAME + IP + '\r\n'
+                answer += 'v=0\r\n' + 'o=' + USERNAME + ' ' + IP + '\r\n'
                 answer += 's=Prueba' + '\r\n' + 't=0' + '\r\n'
                 answer += 'm=audio' + PORT_AUDIO + 'RTP' + '\r\n'
 
