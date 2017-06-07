@@ -92,7 +92,7 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
             	break
 
             method = text.decode('utf-8').split(' ')[0]
-            print("Hemos recibido tu peticion:\r\n", LINE)
+            #print("Hemos recibido tu peticion:\r\n", LINE)
 
             RECEPTOR_IP = LINE[4].split(' ')[1].split('\r\n')[0]
             RECEPTOR_PORT = LINE[7].split(' ')[1].split(' ')[0]
@@ -105,7 +105,9 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
                 FICH_LOG(PATH_LOG, 'Error', IP_CLIENT, PORT_CLIENT, '')
 
             elif method == 'INVITE':
-                asnwer = 'SIP/2.0 100 Trying\r\n\r\n'
+            	FICH_LOG(PATH_LOG, 'Received from', RECEPTOR_IP, RECEPTOR_PORT, LINE)
+
+                answer = 'SIP/2.0 100 Trying\r\n\r\n'
                 answer += 'SIP/2.0 180 Ring\r\n\r\n'
                 answer += 'SIP/2.0 200 OK\r\n\r\n'
                 #Añadimos las cabeceras: Header + Separator:
@@ -120,10 +122,11 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
                 #Añadimos al fichero LOG:
                 response = answer.split('\r\n')
                 LINE = ' '.join(response)
-                EVENT = 'Received from'
-                FICH_LOG(PATH_LOG, EVENT, IP_CLIENT, PORT_CLIENT, LINE)
+                FICH_LOG(PATH_LOG, 'Send to', IP_CLIENT, PORT_CLIENT, LINE)
 
             elif method == 'ACK':
+            	FICH_LOG(PATH_LOG, 'Received from', RECEPTOR_IP, RECEPTOR_PORT, LINE)
+
             #Envio RTP:
             # aEjecutar es un string con lo que se ha de ejecutar en la shell
                 aEjecutar = './mp32rtp -i ' + self.RTP['IP']
@@ -131,29 +134,32 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
                 aEjecutar += '< ' + PATH_AUDIO
                 print ("Let's run ", aEjecutar)
                 os.system(aEjecutar)
+                print('Finished transfer!')
+
+                FICH_LOG(PATH_LOG, 'Finished audio transfer','','','')
 
             elif method == 'BYE':
+            	FICH_LOG(PATH_LOG, 'Received from', RECEPTOR_IP, RECEPTOR_PORT, LINE)
+
                 answer = 'SIP/2.0 200 OK\r\n\r\n'
                 #Enviamos el mensaje de respuesta:
                 self.wfile.write(bytes(answer, 'utf-8'))
                 #Añadimos al fichero LOG:
                 response = answer.split('\r\n')
                 LINE = ' '.join(response)
-                EVENT = 'Received from'
-                FICH_LOG(PATH_LOG, EVENT, IP_CLIENT, PORT_CLIENT, LINE)
+                FICH_LOG(PATH_LOG, 'Send to', IP_CLIENT, PORT_CLIENT, LINE)
 
             else:
+            	FICH_LOG(PATH_LOG, 'Received from', RECEPTOR_IP, RECEPTOR_PORT, LINE)
+
                 answer = 'SIP/2.0 400 Bad Request\r\n\r\n'
                 #Enviamos el mensaje de respuesta:
                 self.wfile.write(bytes(answer, 'utf-8'))
                 #Añadimos al fichero LOG:
                 response = answer.split('\r\n')
                 LINE = ' '.join(response)
-                FICH_LOG(PATH_LOG, 'Error', IP_CLIENT, PORT_CLIENT, '')
+                FICH_LOG(PATH_LOG, 'Send to', IP_CLIENT, PORT_CLIENT, LINE)
 
-            # Si no hay más líneas salimos del bucle infinito
-            if not line:
-                break
 
 if __name__ == "__main__":
 
@@ -164,7 +170,7 @@ if __name__ == "__main__":
         CONFIG = sys.argv[1]
 
         if not os.path.exists(CONFIG):
-            print("File doesnt exist!")
+            print("File doesn't exist!")
             sys.exit("Usage: python3 uaserver.py config")
 
     except IndexError:
