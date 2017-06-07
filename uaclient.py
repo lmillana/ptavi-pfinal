@@ -9,7 +9,8 @@ import socket
 import os
 import time
 import hashlib
-
+from xml.sax import make_parser
+from xml.sax.handler import ContentHandler
 
 def FICH_LOG(fichero, EVENT, IP, PORT, LINE):
     fich = open(fichero, 'a')
@@ -27,6 +28,64 @@ def FICH_LOG(fichero, EVENT, IP, PORT, LINE):
 
     fich.write(data)
     fich.close()
+
+class XMLHandler(ContentHandler):
+	def __init__(self):
+	# Iniciamos variables
+
+		#Diccionario delos datos de las etiquetas:
+		self.tag_dic = {}
+		#Lista donde guardar los diccionarios:
+		self.list_dic = []
+
+	def startElement(self,name,attrs):
+		if name == 'account':
+			self.tag_dic['username'] = attrs.get('username','--')
+			self.tag_dic['passwd'] = attrs.get('passwd','--')
+			#Añadimos:
+			self.list_dic.append(self.tag_dic)
+			#Vaciamos el diccionario:
+			self.tag_dic = {}
+
+		elif name == 'uaserver':
+			self.tag_dic['UAS_IP'] = attrs.get('ip', '--')
+			self.tag_dic['UAS_Port'] = attrs.get('port','--')
+			#Añadimos:
+			self.list_dic.append(self.tag_dic)
+			#Vaciamos el diccionario:
+			self.tag_dic = {}
+
+		elif name == 'rtpaudio':
+			self.tag_dic['RTP_Port'] = attrs.get('port', '--')
+			#Añadimos:
+			self.list_dic.append(self.tag_dic)
+			#Vaciamos el diccionario:
+			self.tag_dic = {}
+
+		elif name = 'regproxy':
+			self.tag_dic['Reg_IP'] = attrs.get('ip', '--')
+			self.tag_dic['Reg_Port'] = attrs.get('port','--')
+			#Añadimos:
+			self.list_dic.append(self.tag_dic)
+			#Vaciamos el diccionario:
+			self.tag_dic = {}
+
+		elif name = 'log':
+			self.tag_dic['PATH'] = attrs.get('path','--')
+			#Añadimos:
+			self.list_dic.append(self.tag_dic)
+			#Vaciamos el diccionario:
+			self.tag_dic = {}
+
+		elif name = 'audio':
+			self.tag_dic['Audio_PATH'] = attrs.get('path','--')
+			#Añadimos:
+			self.list_dic.append(tag_dic)
+			#Vaciamos el diccionario:
+			self.tag_dic = {}
+
+	def getData (self):
+		return self.list_dic
 
 
 if __name__ == "__main__":
@@ -118,13 +177,18 @@ if __name__ == "__main__":
         my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
         #Escribimos en el fichero LOG:
         FICH_LOG(PATH_LOG, 'Send to', IP_PROXY, PORT_PROXY, LINE)
+    
     except socket.error:
-        sys.exit("ERROR: No server listening")
+        sys.exit('ERROR: No server listening at '+ IP_PROXY + 'Port: '+ PORT_PROXY)
+        #Escribimos en el fichero LOG:
+        FICH_LOG(PATH_LOG, 'Error', IP, PORT, '')
+        sys.exit(FICH_LOG)
 
     try:
         #Recibimos datos:
-        data = my_socket.recv(1024)
+        data = my_socket.recv(int(PORT_PROXY))
         print("Receiving: \r\n" + data.decode('utf-8'))
+
     except socket.error:
         #Escribimos en el fichero LOG:
         FICH_LOG(PATH_LOG, 'Error', IP, PORT, '')
@@ -149,9 +213,12 @@ if __name__ == "__main__":
         LINE += 'WWW Authenticate: Digest response= '
         LINE += new_response + '\r\n'
 
-        my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
+        my_socket.send(bytes(LINE, 'utf-8') + b'\r\n\r\n')
         #Escribimos en el fichero LOG:
         FICH_LOG(PATH_LOG, 'Send to', IP_PROXY, PORT_PROXY, LINE)
+
+        data = my_socket.recv(int(PORT_PROXY))
+        FICH_LOG(PATH_LOG, 'Received from', IP_PROXY, PORT_PROXY, LINE)
 
     elif response[0] == 'SIP/2.0 100 Trying':
         #Escribimos en el fichero LOG:
@@ -160,20 +227,26 @@ if __name__ == "__main__":
         #Respuesta a INVITE: TRYING + RINGING + OK:
         LINE = method + 'sip:' + USER + ' SIP/2.0'
 
+        my_socket.send(bytes(LINE, 'utf-8') + b'\r\n\r\n')
+        FICH_LOG(PATH_LOG,'Send to', IP_PROXY, PORT_PROXY, LINE)
+
         #Envio RTP:
         # aEjecutar es un string con lo que se ha de ejecutar en la shell
-        aEjecutar = './mp32rtp -i ' + '127.0.0.1'
+        aEjecutar = './mp32rtp -i ' + IP
         aEjecutar += '-p' + PORT_AUDIO
         aEjecutar += '< ' + PATH_AUDIO
 
         print ("Let's run", aEjecutar)
+
+        FICH_LOG(PATH_LOG, 'Send to', IP, PORT, PATH_AUDIO)
+        print('Finishing')
+
         os.system(aEjecutar)
 
     elif response[0] == 'SIP/2.0 200 OK':
         #Escribimos en el fichero LOG:
         FICH_LOG(PATH_LOG, 'Finishing.', '', '', '')
-        print("Ending socket...")
 
         # Cerramos todo
         my_socket.close()
-        print("Fin.")
+        print('The End')
