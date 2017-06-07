@@ -10,6 +10,7 @@ from uaclient import FICH_LOG
 import socket
 import socketserver
 import random
+from xml.sax.handler import ContentHandler
 
 class XMLHandler(ContentHandler):
 	def __init__(self):
@@ -73,6 +74,23 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
     """
     Proxy-Registrar server class
     """
+    #Diccionario de clientes:
+    client_dic = {}
+
+    def register2json(self):
+    	#Fichero JSON: user + dic + time
+    	json.dump(self.client_dic, open('registered.json', 'w'))
+
+    def json2registered(self):
+    	#Metodo que comprueba si hay fichero JSON.
+    	try:
+    		with open('registered.json') as client_file:
+    			#Lee su contenido y lo usa como dic de user.
+    			self.client_dic = json.load(client_file)
+    			self.file_exists = True
+    	except:
+    		#Actua como si no hubiera fichero JSON
+    		self.file_exists = False
     
     def Check_Passwd(self, PATH, PASSWD, UA, IP, PORT):
         Found = 'False'
@@ -159,6 +177,36 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
                     #Primero tenemos que comprobar si es un usuario registrado
             
             elif method == 'ACK':
+				try:
+		        # Creamos el socket, lo configuramos y lo atamos a un servidor/puerto
+		        my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		        my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+		        my_socket.connect((IP, int(PORT)))
+
+		        #Enviando:
+		        print("Sending: \r\n" + LINE)
+		        my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
+		        #Escribimos en el fichero LOG:
+		        FICH_LOG(PATH_LOG, 'Send to', IP_PROXY, PORT_PROXY, LINE)
+		    
+		    except socket.error:
+		        sys.exit('ERROR: No Proxy/registrar listening at '+ IP_PROXY + 'Port: '+ PORT_PROXY)
+		        #Escribimos en el fichero LOG:
+		        FICH_LOG(PATH_LOG, 'Error', IP, PORT, '')
+		        sys.exit(FICH_LOG)
+
+		    try:
+		        #Recibimos datos:
+		        data = my_socket.recv(int(PORT))
+		        print("Receiving: \r\n" + data.decode('utf-8'))
+
+		    except socket.error:
+		        #Escribimos en el fichero LOG:
+		        FICH_LOG(PATH_LOG, 'Error', IP_PROXY, PORT_PROXY, '')
+        		sys.exit(FICH_LOG)
+
+¡¡¡
+
                 #Añadimos al fichero LOG:
                 print("Respuesta a un ACK")
                 #Enviamos al destino:
