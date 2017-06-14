@@ -94,8 +94,8 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
             method = text.decode('utf-8').split(' ')[0]
             #print("Hemos recibido tu peticion:\r\n", LINE)
 
-            RECEPTOR_IP = LINE[4].split(' ')[1].split('\r\n')[0]
-            RECEPTOR_PORT = LINE[7].split(' ')[1].split(' ')[0]
+            #RECEPTOR_IP = LINE[4].split(' ')[1].split('\r\n')[0]
+            #RECEPTOR_PORT = LINE[7].split(' ')[1].split(' ')[0]
 
             if not method in self.METHODS:
                 answer = 'SIP/2.0 405 Method Not Allowed\r\n\r\n'
@@ -105,8 +105,8 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
                 FICH_LOG(PATH_LOG, 'Error', IP_CLIENT, PORT_CLIENT, '')
 
             elif method == 'INVITE':
-            	FICH_LOG(PATH_LOG, 'Received from', RECEPTOR_IP, RECEPTOR_PORT, LINE)
-
+            	FICH_LOG(PATH_LOG,'Received from',RECEPTOR_IP,RECEPTOR_PORT,LINE)
+                
                 answer = 'SIP/2.0 100 Trying\r\n\r\n'
                 answer += 'SIP/2.0 180 Ring\r\n\r\n'
                 answer += 'SIP/2.0 200 OK\r\n\r\n'
@@ -119,6 +119,10 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
 
                 #Enviamos el mensaje de respuesta:
                 self.wfile.write(bytes(answer, 'utf-8'))
+                #Añadimos al diccionario RTP:
+
+                #INCOMPLETO!!!!
+
                 #Añadimos al fichero LOG:
                 response = answer.split('\r\n')
                 LINE = ' '.join(response)
@@ -134,8 +138,9 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
                 aEjecutar += '< ' + PATH_AUDIO
                 print ("Let's run ", aEjecutar)
                 os.system(aEjecutar)
-                print('Finished transfer!')
+                FICH_LOG(PATH_LOG, 'Send to', self.RTP['IP'], self.RTP['PORT'],'Audio File')
 
+                print('Finished transfer!')
                 FICH_LOG(PATH_LOG, 'Finished audio transfer','','','')
 
             elif method == 'BYE':
@@ -158,7 +163,7 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
                 #Añadimos al fichero LOG:
                 response = answer.split('\r\n')
                 LINE = ' '.join(response)
-                FICH_LOG(PATH_LOG, 'Send to', IP_CLIENT, PORT_CLIENT, LINE)
+                FICH_LOG(PATH_LOG, 'Error', IP_CLIENT, PORT_CLIENT, '')
 
 
 if __name__ == "__main__":
@@ -213,6 +218,6 @@ if __name__ == "__main__":
 
     try:
         serv.serve_forever()
-    except:
+    except KeyboardInterrupt:
         FICH_LOG(PATH_LOG, 'Error', IP_PROXY, PORT_PROXY, '')
-        sys.exit("Ended server")
+        sys.exit('\r\nEnded server')
