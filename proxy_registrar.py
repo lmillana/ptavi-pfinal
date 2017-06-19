@@ -22,6 +22,7 @@ class XMLHandler(ContentHandler):
 		self.list_dic = []
 
 	def startElement(self,name,attrs):
+		#Almacena en un dic los datos del XML:
 		if name == 'server':
 			self.tag_dic['username'] = attrs.get('username','--')
 			self.tag_dic['IP'] = attrs.get('ip','--')
@@ -53,6 +54,7 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
 	"""
 	Proxy-Registrar server class
 	"""
+
 	#Diccionario de clientes:
 	client_dic = {}
 
@@ -77,60 +79,107 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
     #NONCE = random.getrandbits(100)
 
 	def handle(self):
-	#Escribe dirección y puerto del cliente (de tupla client_address)
+		#Escribe dirección y puerto del cliente (de tupla client_address)
 		IP_CLIENT = str(self.client_address[0])
-		PORT_CLIENT = int(self.client_address[1])
-		print (IP_CLIENT)
-		print(PORT_CLIENT)
 
-		
+
 		#Metodo que gestiona las peticiones:
 		while 1:
 		#Leyendo línea a línea lo que nos envía el cliente/servidor
 			text = self.rfile.read()
-			LINE = line.decode('utf-8')
+			LINE = text.decode('utf-8')
 
 			if not LINE:
 				break
 
 			method = text.decode('utf-8').split(' ')[0]
 
-			self.client_dic[USER] = 
-
-			#Añadimos mensajes de recepcion en el fichero LOG:
-			FICH_LOG(PATH_LOG, 'Received from', IP_CLIENT, PORT_CLIENT, LINE)
+			print('-----RECEIVED:\r\n' +  LINE)
 
 			if not method in self.METHODS:
 				answer = 'SIP/2.0 405 Method Not Allowed\r\n\r\n'
+				self.wfile.write(bytes(answer, 'utf-8'))
+				#Añadimos al fichero LOG:
+				FICH_LOG(PATH_LOG, 'Send to', IP_CLIENT, str(self.PORT), answer)
 
 			elif method == 'REGISTER':
-				#Comprobamos si hay fichero JSON:
-				self.json2registered()
-
-				#Comprobamos Autenticacion: 
-				response = LINE.split(' ')
-
 				#Guardamos la peticion REGISTER:
-				self.client_dic[]
+				self.PORT = text.decode('utf-8').split()[1].split(':')[2]
+				self.USER = text.decode('utf-8').split()[1].split(':')[1]
+				self.EXPIRES = text.decode('utf-8').split()[4]
 
-				if len(response) == 4:
-					self.NONCE.append(str(random.randint(0000, 9999)))
-					answer = 'SIP/2.0 401 Unauthorized\r\n'
-					answer += 'WWW Authenticate: Digest nonce= '
-					answer += str(self.NONCE[0]) + '\r\n\r\n'
-					#Enviamos Register sin Autenticacion:
-					sel.wfile.write(bytes(answer, 'utf-8'))
+				self.client_list = []
+				self.client_list.append(IP_CLIENT)
+				self.client_list.append(self.PORT)
+				self.client_list.append(self.EXPIRES)
+
+				self.client_dic[self.USER] = self.client_list
+				#Vaciamos:
+				#self.delete()
+				self.client_list = []
+
+				answer = 'SIP/2.0 200 OK\r\n\r\n'
+				#Enviamos el mensaje de respuesta:
+				self.wfile.write(bytes(answer, 'utf-8'))
+				#Añadimos al fichero LOG:
+				FICH_LOG(PATH_LOG, 'Send to', IP_CLIENT, str(self.PORT), answer)
+
+				print('-----SENDING:\r\n' + answer)
+
+			elif method == 'INVITE':
+				
+				#Definimos las variables:
+				USER = text.decode('utf-8').split()[1].split(':')[1]
+				RTP_PORT = text.decode('utf-8').split()[-2]
+				#Buscamos del DIC: IP y PORT:
+				IP_SERV = self.client_dic[USER][0]
+				PORT_SERV = self.client_dic[USER][1]
+
+				try:
+					# Creamos el socket, lo configuramos y lo atamos a un servidor/puerto
+					my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+					my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+					my_socket.connect((IP_SERV, int(PORT_SERV)))
+					#Enviando:
+					print("-----SENDING: \r\n" + LINE)
+					my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
 					#Escribimos en el fichero LOG:
-					FICH_LOG(PATH_LOG, 'Send to', IP_CLIENT, PORT_CLIENT, answer)
-				else:
-					data = LINE.split('\r\n')[2].split('=')[1]
-					#Comprobamos contraseña:
+					FICH_LOG(PATH_LOG, 'Send to', IP_SERV, PORT_SERV, LINE)
 
-					#Abrimos fichero para la contraseña:
-					passwd_file = open(passwd_path,'r')
+					#Recibimos datos:
+					data = my_socket.recv(int(PORT_SERV))
+					LINE = data.decode('utf-8')
+					self.wfile.write(bytes(LINE, 'utf-8'))
 
+					#Escribimos en el fichero LOG:
+					FICH_LOG(PATH_LOG, 'Received from', IP_SERV, PORT_SERV, LINE)
+					print('-----RECEIVED: \r\n', LINE)
+
+				except ConnectionRefusedError:
+					print('ERROR: No server listening at '+ str(IP_SERV) + ' at port: ' + str(PORT_SERV) + '\r\n\r\n')
+					#Escribimos en el fichero LOG:
+					FICH_LOG(PATH_LOG, 'Error', IP_SERV, PORT_SERV, '')
+
+			elif method == 'ACK':
+				answer = 'ACK RECEIVED\r\n\r\n'
+				self.wfile.write(bytes(answer, 'utf-8'))
+
+				#Escribimos en el fichero LOG:
+				FICH_LOG(PATH_LOG, 'Received from', IP_SERV, PORT_SERV, answer)
+
+			elif method == 'BYE':
+				answer = 'SIP/2.0 200 OK\r\n\r\n'
+				self.wfile.write(bytes(answer, 'utf-8'))
+
+				#Escribimos en el fichero LOG:
+				FICH_LOG(PATH_LOG, 'Finishing...', IP_SERV, PORT_SERV, '')
+			
 			else:
-				print("Something it's wrong, baby")
+				answer = 'Something its wrong, baby\r\n\r\n'
+				self.wfile.write(bytes(answer, 'utf-8'))
+
+				#Escribimos en el fichero LOG:
+				FICH_LOG(PATH_LOG, 'Error', IP_SERV, PORT_SERV, '')
 
 
 if __name__ == "__main__":
@@ -173,4 +222,4 @@ if __name__ == "__main__":
 
 	except KeyboardInterrupt:
 		FICH_LOG(PATH_LOG, 'Error', SERVER_IP, SERVER_PORT, '')
-		sys.exit(" Ended Proxy")
+		sys.exit("\r\nEnded Proxy")
