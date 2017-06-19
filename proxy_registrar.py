@@ -80,7 +80,10 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
 	#Escribe dirección y puerto del cliente (de tupla client_address)
 		IP_CLIENT = str(self.client_address[0])
 		PORT_CLIENT = int(self.client_address[1])
+		print (IP_CLIENT)
+		print(PORT_CLIENT)
 
+		
 		#Metodo que gestiona las peticiones:
 		while 1:
 		#Leyendo línea a línea lo que nos envía el cliente/servidor
@@ -91,6 +94,9 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
 				break
 
 			method = text.decode('utf-8').split(' ')[0]
+
+			self.client_dic[USER] = 
+
 			#Añadimos mensajes de recepcion en el fichero LOG:
 			FICH_LOG(PATH_LOG, 'Received from', IP_CLIENT, PORT_CLIENT, LINE)
 
@@ -103,6 +109,10 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
 
 				#Comprobamos Autenticacion: 
 				response = LINE.split(' ')
+
+				#Guardamos la peticion REGISTER:
+				self.client_dic[]
+
 				if len(response) == 4:
 					self.NONCE.append(str(random.randint(0000, 9999)))
 					answer = 'SIP/2.0 401 Unauthorized\r\n'

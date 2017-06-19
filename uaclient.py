@@ -9,7 +9,6 @@ import socket
 import os
 import time
 import hashlib
-from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
 
 def FICH_LOG(fichero, EVENT, IP, PORT, LINE):
@@ -18,9 +17,9 @@ def FICH_LOG(fichero, EVENT, IP, PORT, LINE):
 
     if EVENT == 'Error':
         data = TIME_ACT + ' ' + EVENT + ': No server listening at '
-        data += IP + ' port ' + PORT + '\r\n'
+        data += str(IP) + ' port ' + str(PORT) + '\r\n'
     elif EVENT == 'Send to' or EVENT == 'Received from':
-        data = TIME_ACT + ' ' + EVENT + ' ' + IP + ':' + PORT + ':'
+        data = TIME_ACT + ' ' + EVENT + ' ' + str(IP) + ':' + str(PORT) + ':'
         data += ' ' + LINE + '\r\n'
     else:
         #Starting or Finishing
@@ -39,6 +38,7 @@ class XMLHandler(ContentHandler):
 		self.list_dic = []
 
 	def startElement(self,name,attrs):
+        #Almacena en un dic los datos del XML:
 		if name == 'account':
 			self.tag_dic['username'] = attrs.get('username','--')
 			self.tag_dic['passwd'] = attrs.get('passwd','--')
@@ -62,7 +62,7 @@ class XMLHandler(ContentHandler):
 			#Vaciamos el diccionario:
 			self.tag_dic = {}
 
-		elif name = 'regproxy':
+		elif name == 'regproxy':
 			self.tag_dic['Reg_IP'] = attrs.get('ip', '--')
 			self.tag_dic['Reg_Port'] = attrs.get('port','--')
 			#Añadimos:
@@ -70,14 +70,14 @@ class XMLHandler(ContentHandler):
 			#Vaciamos el diccionario:
 			self.tag_dic = {}
 
-		elif name = 'log':
+		elif name == 'log':
 			self.tag_dic['PATH'] = attrs.get('path','--')
 			#Añadimos:
 			self.list_dic.append(self.tag_dic)
 			#Vaciamos el diccionario:
 			self.tag_dic = {}
 
-		elif name = 'audio':
+		elif name == 'audio':
 			self.tag_dic['Audio_PATH'] = attrs.get('path','--')
 			#Añadimos:
 			self.list_dic.append(tag_dic)
@@ -156,7 +156,7 @@ if __name__ == "__main__":
         #Header Field + Separator:
         LINE += 'Content-Type: application/sdp\r\n\r\n'
         #Message Body:
-        LINE += 'v=0\r\n' + 'o=' + USERNAME + IP + '\r\n'
+        LINE += 'v=0\r\n' + 'o=' + USERNAME + ' ' + IP + '\r\n'
         LINE += 's=prueba' + '\r\n' + 't=0' + '\r\n'
         LINE += 'm=audio ' + PORT_AUDIO + ' RTP' + '\r\n'
 
@@ -173,7 +173,7 @@ if __name__ == "__main__":
         my_socket.connect((IP_PROXY, int(PORT_PROXY)))
 
         #Enviando:
-        print("Sending: \r\n" + LINE)
+        print("-----SENDING: \r\n" + LINE)
         my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
         #Escribimos en el fichero LOG:
         FICH_LOG(PATH_LOG, 'Send to', IP_PROXY, PORT_PROXY, LINE)
@@ -187,7 +187,9 @@ if __name__ == "__main__":
     try:
         #Recibimos datos:
         data = my_socket.recv(int(PORT_PROXY))
-        print("Receiving: \r\n" + data.decode('utf-8'))
+        LINE = data.decode('utf-8')
+        print("-----RECEIVED: \r\n" + LINE)
+        FICH_LOG(PATH_LOG, 'Received from', IP_PROXY, PORT_PROXY, LINE)
 
     except socket.error:
         #Escribimos en el fichero LOG:
