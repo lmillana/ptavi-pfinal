@@ -82,7 +82,6 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
 		#Escribe dirección y puerto del cliente (de tupla client_address)
 		IP_CLIENT = str(self.client_address[0])
 
-
 		#Metodo que gestiona las peticiones:
 		while 1:
 		#Leyendo línea a línea lo que nos envía el cliente/servidor
@@ -98,9 +97,12 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
 
 			if not method in self.METHODS:
 				answer = 'SIP/2.0 405 Method Not Allowed\r\n\r\n'
+				#Enviamos el mensaje de respuesta:
 				self.wfile.write(bytes(answer, 'utf-8'))
 				#Añadimos al fichero LOG:
-				FICH_LOG(PATH_LOG, 'Send to', IP_CLIENT, str(self.PORT), answer)
+				FICH_LOG(PATH_LOG, 'Error', IP_CLIENT, '', answer)
+
+				print('-----SENDING:\r\n' + answer)
 
 			elif method == 'REGISTER':
 				#Guardamos la peticion REGISTER:
@@ -115,7 +117,6 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
 
 				self.client_dic[self.USER] = self.client_list
 				#Vaciamos:
-				#self.delete()
 				self.client_list = []
 
 				answer = 'SIP/2.0 200 OK\r\n\r\n'
@@ -127,10 +128,10 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
 				print('-----SENDING:\r\n' + answer)
 
 			elif method == 'INVITE':
-				
 				#Definimos las variables:
 				USER = text.decode('utf-8').split()[1].split(':')[1]
 				RTP_PORT = text.decode('utf-8').split()[-2]
+
 				#Buscamos del DIC: IP y PORT:
 				IP_SERV = self.client_dic[USER][0]
 				PORT_SERV = self.client_dic[USER][1]
@@ -140,6 +141,7 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
 					my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 					my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 					my_socket.connect((IP_SERV, int(PORT_SERV)))
+
 					#Enviando:
 					print("-----SENDING: \r\n" + LINE)
 					my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
@@ -168,11 +170,33 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
 				FICH_LOG(PATH_LOG, 'Received from', IP_SERV, PORT_SERV, answer)
 
 			elif method == 'BYE':
-				answer = 'SIP/2.0 200 OK\r\n\r\n'
-				self.wfile.write(bytes(answer, 'utf-8'))
+				#Buscamos del DIC: IP y PORT:
+				#IP_SERV = self.client_dic[USER][0]
+				#PORT_SERV = self.client_dic[USER][1]
+
+				#Creamos el socket, lo configuramos y lo atamos a un servidor/puerto
+				my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+				my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+				my_socket.connect((IP_SERV, int(PORT_SERV)))
+
+				#Enviando:
+				print("-----SENDING: \r\n" + LINE)
+				my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
+				#Escribimos en el fichero LOG:
+				FICH_LOG(PATH_LOG, 'Send to', IP_SERV, PORT_SERV, LINE)
 
 				#Escribimos en el fichero LOG:
-				FICH_LOG(PATH_LOG, 'Finishing...', IP_SERV, PORT_SERV, '')
+				FICH_LOG(PATH_LOG, 'Received from', IP_SERV, PORT_SERV, LINE)
+				print('-----RECEIVED: \r\n', LINE)
+
+
+				answer = 'SIP/2.0 200 OK\r\n\r\n'
+				#Enviamos el mensaje de respuesta:
+				self.wfile.write(bytes(answer, 'utf-8'))
+				#Añadimos al fichero LOG:
+				FICH_LOG(PATH_LOG, 'Send to', IP_CLIENT, '', answer)
+
+				print('-----SENDING:\r\n' + answer)
 			
 			else:
 				answer = 'Something its wrong, baby\r\n\r\n'
@@ -215,7 +239,7 @@ if __name__ == "__main__":
 
 	try:
 		serv = socketserver.UDPServer((SERVER_IP,int(SERVER_PORT)), ProxyRegistrarHandler)
-		print('PROXY ' + SERVER_NAME + ' listening at port ' + SERVER_PORT + '...')
+		print('Proxy-Server ' + SERVER_NAME + ' listening at port ' + SERVER_PORT + '...')
 		#Escribimos en el fichero LOG:
 		FICH_LOG(PATH_LOG, 'Starting...', '','','')
 		serv.serve_forever()
