@@ -140,8 +140,10 @@ if __name__ == "__main__":
     METHODS = ['REGISTER', 'INVITE', 'BYE']
 
     if not METHOD in METHODS:
-        print("Method have to be: REGISTER, INVITE OR BYE")
-        sys.exit("Usage: python3 uaclient.py config method option")
+        print("-----ATENTION! Method have to be: REGISTER, INVITE OR BYE")
+        LINE = ''
+        #Escribimos en el fichero LOG:
+        FICH_LOG(PATH_LOG, 'Error', USERNAME, PORT, '')
 
     elif METHOD == 'REGISTER':
         #Escribimos en el fichero LOG:
@@ -227,7 +229,7 @@ if __name__ == "__main__":
         LINE = '100 Trying + 180 Ringing + 200 OK'
         FICH_LOG(PATH_LOG, 'Received from', IP_PROXY, PORT_PROXY, LINE)
         #Respuesta a INVITE: TRYING + RINGING + OK:
-        LINE = method + 'sip:' + USER + ' SIP/2.0'
+        LINE = METHOD + 'sip:' + USER + ' SIP/2.0'
 
         my_socket.send(bytes(LINE, 'utf-8') + b'\r\n\r\n')
         FICH_LOG(PATH_LOG,'Send to', IP_PROXY, PORT_PROXY, LINE)
