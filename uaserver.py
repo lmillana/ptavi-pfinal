@@ -118,7 +118,7 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
 				#Message Body:
 				answer += 'v=0\r\n' + 'o=' + USERNAME + ' ' + IP + '\r\n'
 				answer += 's=Prueba' + '\r\n' + 't=0' + '\r\n'
-				answer += 'm=audio' + PORT_AUDIO + 'RTP' + '\r\n'
+				answer += 'm=audio ' + PORT_AUDIO + ' RTP' + '\r\n'
 
 				#Enviamos el mensaje de respuesta:
 				self.wfile.write(bytes(answer, 'utf-8'))
@@ -127,11 +127,13 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
 				#Añadimos al fichero LOG:
 				FICH_LOG(PATH_LOG, 'Send to', IP_CLIENT, PORT_CLIENT, answer)
 
+				print('-----SENDING:\r\n' + answer)
+
 			elif method == 'ACK':
 				FICH_LOG(PATH_LOG, 'Received from', IP_FROM, PORT_FROM, answer)
 
-			#Envio RTP:
-			# aEjecutar es un string con lo que se ha de ejecutar en la shell
+				#Envio RTP:
+				#aEjecutar es un string con lo que se ha de ejecutar en la shell
 				aEjecutar = './mp32rtp -i ' + self.RTP['IP']
 				aEjecutar += '-p' + self.RTP['PORT']
 				aEjecutar += '< ' + PATH_AUDIO
