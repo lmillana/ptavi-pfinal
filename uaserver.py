@@ -74,8 +74,7 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
 	Proxy server class.
 	"""
 
-	RTP = {'IP': '',
-			'PORT': []}
+	RTP_LIST = []
 
 	METHODS = ['INVITE', 'ACK', 'BYE']
 
@@ -96,9 +95,6 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
 			method = text.decode('utf-8').split(' ')[0]
 			print('-----RECEIVED:\r\n' + LINE)
 
-			IP_FROM = text.decode('utf-8').split()[8]
-			PORT_FROM = text.decode('utf-8').split()[-2]
-
 			if not method in self.METHODS:
 				answer = 'SIP/2.0 405 Method Not Allowed\r\n\r\n'
 				#Enviamos el mensaje de respuesta:
@@ -107,8 +103,12 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
 				FICH_LOG(PATH_LOG, 'Error', IP_CLIENT, PORT_CLIENT, '')
 
 			elif method == 'INVITE':
+				#Variables:
+				IP_FROM = text.decode('utf-8').split()[7]
+				PORT_FROM = text.decode('utf-8').split()[-2]
+
 				#Escribimos en el fichero LOG:
-				FICH_LOG(PATH_LOG,'Received from',IP_FROM, PORT_FROM,LINE)
+				FICH_LOG(PATH_LOG,'Received from',IP_FROM, PORT_FROM, LINE)
                 
 				answer = 'SIP/2.0 100 Trying\r\n\r\n'
 				answer += 'SIP/2.0 180 Ring\r\n\r\n'
@@ -122,7 +122,11 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
 
 				#Enviamos el mensaje de respuesta:
 				self.wfile.write(bytes(answer, 'utf-8'))
+
 				#Añadimos al diccionario RTP:
+				self.RTP_LIST.append(USERNAME)
+				self.RTP_LIST.append(IP)
+				self.RTP_LIST.append(PORT_AUDIO)
 
 				#Añadimos al fichero LOG:
 				FICH_LOG(PATH_LOG, 'Send to', IP_CLIENT, PORT_CLIENT, answer)
@@ -130,14 +134,14 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
 				print('-----SENDING:\r\n' + answer)
 
 			elif method == 'ACK':
-				FICH_LOG(PATH_LOG, 'Received from', IP_FROM, PORT_FROM, answer)
+				FICH_LOG(PATH_LOG, 'Received from', IP_PROXY, PORT_PROXY, answer)
 
 				#Envio RTP:
 				#aEjecutar es un string con lo que se ha de ejecutar en la shell
-				aEjecutar = './mp32rtp -i ' + self.RTP['IP']
-				aEjecutar += '-p' + self.RTP['PORT']
+				aEjecutar = './mp32rtp -i ' + self.RTP_LIST[1]
+				aEjecutar += '-p' + self.RTP_LIST[2]
 				aEjecutar += '< ' + PATH_AUDIO
-				print ("Let's run ", aEjecutar)
+				print ("LET'S RUN! ", aEjecutar)
 				os.system(aEjecutar)
 				#Añadimos al fichero LOG:
 				FICH_LOG(PATH_LOG, 'Send to', self.RTP['IP'], self.RTP['PORT'],'Audio File')
@@ -146,15 +150,17 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
 				FICH_LOG(PATH_LOG, 'Finished audio transfer','','','')
 
 			elif method == 'BYE':
-				FICH_LOG(PATH_LOG, 'Received from', IP_FROM, PORT_FROM, LINE)
+				#Añadimos al fichero LOG:
+				FICH_LOG(PATH_LOG, 'Received from', IP_PROXY, PORT_PROXY, LINE)
 
 				answer = 'SIP/2.0 200 OK\r\n\r\n'
 				#Enviamos el mensaje de respuesta:
 				self.wfile.write(bytes(answer, 'utf-8'))
 
 				#Añadimos al fichero LOG:
-				FICH_LOG(PATH_LOG, 'Send to', IP_CLIENT, PORT_CLIENT, answer)
+				FICH_LOG(PATH_LOG, 'Send to', IP_PROXY, PORT_PROXY, answer)
 
+				print('-----SENDING:\r\n' + answer)
 
 			else:
 				FICH_LOG(PATH_LOG, 'Received from', RECEPTOR_IP, RECEPTOR_PORT, LINE)
@@ -166,6 +172,8 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
 				response = answer.split('\r\n')
 				#LINE = ' '.join(response)
 				FICH_LOG(PATH_LOG, 'Error', IP_CLIENT, PORT_CLIENT, '')
+
+				print('-----SENDING:\r\n' + answer)
 
 
 if __name__ == "__main__":
@@ -216,10 +224,10 @@ if __name__ == "__main__":
 
 	# Creamos servidor de eco y escuchamos
 	serv = socketserver.UDPServer((IP, int(PORT)), ProxyHandler)
-	print("Listening...")
+	print('Listening...')
 
 	try:
 		serv.serve_forever()
 	except KeyboardInterrupt:
-		FICH_LOG(PATH_LOG, 'Error', IP_PROXY, PORT_PROXY, '')
+		FICH_LOG(PATH_LOG, 'Finising...', IP_PROXY, PORT_PROXY, '')
 		sys.exit('\r\nEnded server')
