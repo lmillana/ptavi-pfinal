@@ -163,7 +163,7 @@ if __name__ == "__main__":
         LINE += 'm=audio ' + PORT_AUDIO + ' RTP' + '\r\n'
 
     elif METHOD == 'BYE':
-        LINE = METHOD + ' sip:' + USER + ' SIP/2.0\r\n'
+        LINE = METHOD + ' sip:' + USER + ' SIP/2.0\r\n\r\n'
 
     #Escribimos en fichero LOG:
     #FICH_LOG(PATH_LOG, 'Sent to', IP_PROXY, PORT_PROXY, LINE)
