@@ -79,6 +79,9 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
     #NONCE = random.getrandbits(100)
 
 	def handle(self):
+		#¿Fichero JSON?
+		self.json2registered()
+
 		#Escribe dirección y puerto del cliente (de tupla client_address)
 		IP_CLIENT = str(self.client_address[0])
 
@@ -171,15 +174,16 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
 
 			elif method == 'BYE':
 				#Buscamos del DIC: IP y PORT:
-				#IP_SERV = self.client_dic[USER][0]
-				#PORT_SERV = self.client_dic[USER][1]
+				USER = text.decode('utf-8').split()[1].split(':')[1] 
+				IP_SERV = self.client_dic[USER][0]
+				PORT_SERV = self.client_dic[USER][1]
 
 				#Creamos el socket, lo configuramos y lo atamos a un servidor/puerto
 				my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 				my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 				my_socket.connect((IP_SERV, int(PORT_SERV)))
 
-				#Enviando:
+				#Enviando al SERVER:
 				print("-----SENDING: \r\n" + LINE)
 				my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
 				#Escribimos en el fichero LOG:
@@ -187,16 +191,16 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
 
 				#Escribimos en el fichero LOG:
 				FICH_LOG(PATH_LOG, 'Received from', IP_SERV, PORT_SERV, LINE)
-				print('-----RECEIVED: \r\n', LINE)
 
 
-				answer = 'SIP/2.0 200 OK\r\n\r\n'
-				#Enviamos el mensaje de respuesta:
-				self.wfile.write(bytes(answer, 'utf-8'))
+				#Recibimos datos:
+				data = my_socket.recv(int(PORT_SERV))
+				LINE = data.decode('utf-8')
+				self.wfile.write(bytes(LINE, 'utf-8'))
 				#Añadimos al fichero LOG:
-				FICH_LOG(PATH_LOG, 'Send to', IP_CLIENT, '', answer)
-
-				print('-----SENDING:\r\n' + answer)
+				FICH_LOG(PATH_LOG, 'Send to', IP_CLIENT, '', LINE)
+				#Enviando al CLIENT:
+				print('-----SENDING:\r\n' + LINE)
 			
 			else:
 				answer = 'Something its wrong, baby\r\n\r\n'
