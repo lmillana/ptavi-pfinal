@@ -75,8 +75,8 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
 
 	METHODS = ['REGISTER', 'INVITE', 'ACK', 'BYE']
 
-    #Variable pseudoaletoria NONCE:
-    #NONCE = random.getrandbits(100)
+	#Variable pseudoaletoria NONCE:
+	NONCE = []
 
 	def handle(self):
 		#¿Fichero JSON?
@@ -108,62 +108,92 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
 				print('-----SENDING:\r\n' + answer)
 
 			elif method == 'REGISTER':
-				#Guardamos la peticion REGISTER:
-				self.PORT = text.decode('utf-8').split()[1].split(':')[2]
-				self.USER = text.decode('utf-8').split()[1].split(':')[1]
-				self.EXPIRES = text.decode('utf-8').split()[4]
+				#Comprobamos VERIFICACION:
+				line_slices = text.decode('utf-8').split()
+				if 'Digest' not in line_slices:
+					self.NONCE.append(str(random.randint(00000,99999)))
 
-				self.client_list = []
-				self.client_list.append(IP_CLIENT)
-				self.client_list.append(self.PORT)
-				self.client_list.append(self.EXPIRES)
+					answer = 'SIP/2.0 401 Unauthorized\r\n'
+					answer += 'WWW Authenticate: Digest nonce='
+					answer += self.NONCE[0] + '\r\n\r\n'
 
-				self.client_dic[self.USER] = self.client_list
-				#Vaciamos:
-				self.client_list = []
+					#Enviamos el mensaje de respuesta:
+					self.wfile.write(bytes(answer, 'utf-8'))
 
-				answer = 'SIP/2.0 200 OK\r\n\r\n'
-				#Enviamos el mensaje de respuesta:
-				self.wfile.write(bytes(answer, 'utf-8'))
-				#Añadimos al fichero LOG:
-				FICH_LOG(PATH_LOG, 'Send to', IP_CLIENT, str(self.PORT), answer)
+					print('-----SENDING:\r\n' + answer)
 
-				print('-----SENDING:\r\n' + answer)
+				else:
+					#Guardamos la peticion REGISTER:
+					self.PORT = text.decode('utf-8').split()[1].split(':')[2]
+					self.USER = text.decode('utf-8').split()[1].split(':')[1]
+					self.EXPIRES = text.decode('utf-8').split()[4]
+					hresponse = text.decode('utf-8').split()[-1].split('=')[1]
+
+					#Consultamos con el fichero de PASSWD:
+					fich = open(DATA_PASSW, 'r')
+					line = fich.readlines()
+					fich.close()
+
+					#FALTA COMPARAR CONTRASEÑAS!!!!
+
+					self.client_list = []
+					self.client_list.append(IP_CLIENT)
+					self.client_list.append(self.PORT)
+					self.client_list.append(self.EXPIRES)
+
+					self.client_dic[self.USER] = self.client_list
+					#Vaciamos:
+					self.client_list = []
+
+					answer = 'SIP/2.0 200 OK\r\n\r\n'
+					#Enviamos el mensaje de respuesta:
+					self.wfile.write(bytes(answer, 'utf-8'))
+					#Añadimos al fichero LOG:
+					FICH_LOG(PATH_LOG, 'Send to', IP_CLIENT, str(self.PORT), answer)
+
+					print('-----SENDING:\r\n' + answer)
 
 			elif method == 'INVITE':
 				#Definimos las variables:
 				USER = text.decode('utf-8').split()[1].split(':')[1]
 				RTP_PORT = text.decode('utf-8').split()[-2]
 
-				#Buscamos del DIC: IP y PORT:
-				IP_SERV = self.client_dic[USER][0]
-				PORT_SERV = self.client_dic[USER][1]
 
-				try:
-					# Creamos el socket, lo configuramos y lo atamos a un servidor/puerto
-					my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-					my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-					my_socket.connect((IP_SERV, int(PORT_SERV)))
+				if USER in self.client_dic.keys():
+					#Buscamos del DIC: IP y PORT:
+					IP_SERV = self.client_dic[USER][0]
+					PORT_SERV = self.client_dic[USER][1]
 
-					#Enviando:
+					try:
+						# Creamos el socket, lo configuramos y lo atamos a un servidor/puerto
+						my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+						my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+						my_socket.connect((IP_SERV, int(PORT_SERV)))
+
+						#Enviando:
+						print("-----SENDING: \r\n" + LINE)
+						my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
+						#Escribimos en el fichero LOG:
+						FICH_LOG(PATH_LOG, 'Send to', IP_SERV, PORT_SERV, LINE)
+
+						#Recibimos datos:
+						data = my_socket.recv(int(PORT_SERV))
+						LINE = data.decode('utf-8')
+						self.wfile.write(bytes(LINE, 'utf-8'))
+
+						#Escribimos en el fichero LOG:
+						FICH_LOG(PATH_LOG, 'Received from', IP_SERV, PORT_SERV, LINE)
+						print('-----RECEIVED: \r\n', LINE)
+
+					except ConnectionRefusedError:
+						print('ERROR: No server listening at '+ str(IP_SERV) + ' at port: ' + str(PORT_SERV) + '\r\n\r\n')
+						#Escribimos en el fichero LOG:
+						FICH_LOG(PATH_LOG, 'Error', IP_SERV, PORT_SERV, '')
+				else:
+					answer = 'SIP/2.0 404 User Not Found\r\n\r\n'
+					self.wfile.write(bytes(answer, 'utf-8'))
+
 					print("-----SENDING: \r\n" + LINE)
-					my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
-					#Escribimos en el fichero LOG:
-					FICH_LOG(PATH_LOG, 'Send to', IP_SERV, PORT_SERV, LINE)
-
-					#Recibimos datos:
-					data = my_socket.recv(int(PORT_SERV))
-					LINE = data.decode('utf-8')
-					self.wfile.write(bytes(LINE, 'utf-8'))
-
-					#Escribimos en el fichero LOG:
-					FICH_LOG(PATH_LOG, 'Received from', IP_SERV, PORT_SERV, LINE)
-					print('-----RECEIVED: \r\n', LINE)
-
-				except ConnectionRefusedError:
-					print('ERROR: No server listening at '+ str(IP_SERV) + ' at port: ' + str(PORT_SERV) + '\r\n\r\n')
-					#Escribimos en el fichero LOG:
-					FICH_LOG(PATH_LOG, 'Error', IP_SERV, PORT_SERV, '')
 
 			elif method == 'ACK':
 				answer = 'ACK RECEIVED\r\n\r\n'
@@ -203,7 +233,7 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
 				print('-----SENDING:\r\n' + LINE)
 			
 			else:
-				answer = 'Something its wrong, baby\r\n\r\n'
+				answer = 'SIP/2.0 400 Bad Resquest\r\n\r\n'
 				self.wfile.write(bytes(answer, 'utf-8'))
 
 				#Escribimos en el fichero LOG:
