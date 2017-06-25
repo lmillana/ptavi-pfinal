@@ -190,39 +190,46 @@ if __name__ == "__main__":
         #Recibimos datos:
         data = my_socket.recv(int(PORT_PROXY))
         LINE = data.decode('utf-8')
-        print("-----RECEIVED: \r\n" + LINE)
+
+        #Escribimos en el fichero LOG:
         FICH_LOG(PATH_LOG, 'Received from', IP_PROXY, PORT_PROXY, LINE)
 
+        print("-----RECEIVED: \r\n" + LINE)
     except socket.error:
         #Escribimos en el fichero LOG:
         FICH_LOG(PATH_LOG, 'Error', IP, PORT, '')
         sys.exit(FICH_LOG)
 
     #Respuesta recibida del PROXY:
-    response = data.decode('utf-8').split("\r\n")
-    LINE = ' '.join(response)
-
+    response = data.decode('utf-8').split()
     #Escribimos en el fichero LOG el mensaje recibido:
     FICH_LOG(PATH_LOG, 'Received from', IP_PROXY, PORT_PROXY, LINE)
 
     #Comportamiento según la respuesta:
-    if response[0] == 'SIP/2.0 401 Unauthorized':
+    if response[1] == '401':
         #Enviamos Register con Autenticación:
-        m = hashlib.md5()
-        NONCE = response[1].split('=')[-1]
+        m = hashlib.sha1()
+        NONCE = response[-1].split('=')[1]
         m.update(b'NONCE')
         m.update(b'PASSWD')
         new_response = m.hexdigest()
 
-        LINE += 'WWW Authenticate: Digest response= '
-        LINE += new_response + '\r\n'
+        LINE = LINE + 'WWW Authenticate: Digest response= '
+        LINE += new_response + '\r\n\r\n'
 
+        #Enviamos la Autenticacion:
+        print('---- SENDING:\r\n' + LINE)
         my_socket.send(bytes(LINE, 'utf-8') + b'\r\n\r\n')
         #Escribimos en el fichero LOG:
         FICH_LOG(PATH_LOG, 'Send to', IP_PROXY, PORT_PROXY, LINE)
 
+        #Recibimos el 200 OK:
         data = my_socket.recv(int(PORT_PROXY))
+        LINE = data.decode('utf-8')
+        #Escribimos en el fichero LOG:
         FICH_LOG(PATH_LOG, 'Received from', IP_PROXY, PORT_PROXY, LINE)
+        
+        print("-----RECEIVED: \r\n" + LINE)
 
     elif response[0] == 'SIP/2.0 100 Trying':
         #Escribimos en el fichero LOG:
