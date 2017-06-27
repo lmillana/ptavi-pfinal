@@ -103,22 +103,18 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
 				FICH_LOG(PATH_LOG, 'Error', IP_CLIENT, PORT_CLIENT, '')
 
 			elif method == 'INVITE':
-				#Variables:
-				IP_FROM = text.decode('utf-8').split()[7]
-				PORT_FROM = text.decode('utf-8').split()[-2]
-
 				#Escribimos en el fichero LOG:
-				FICH_LOG(PATH_LOG,'Received from',IP_FROM, PORT_FROM, LINE)
+				FICH_LOG(PATH_LOG,'Received from',IP_PROXY, PORT_PROXY, LINE)
                 
 				answer = 'SIP/2.0 100 Trying\r\n\r\n'
-				answer += 'SIP/2.0 180 Ring\r\n\r\n'
+				answer += 'SIP/2.0 180 Ringing\r\n\r\n'
 				answer += 'SIP/2.0 200 OK\r\n\r\n'
 				#Añadimos las cabeceras: Header + Separator:
 				answer += 'Content-Type: application/sdp\r\n\r\n'
 				#Message Body:
 				answer += 'v=0\r\n' + 'o=' + USERNAME + ' ' + IP + '\r\n'
 				answer += 's=Prueba' + '\r\n' + 't=0' + '\r\n'
-				answer += 'm=audio ' + PORT_AUDIO + ' RTP' + '\r\n'
+				answer += 'm=audio ' + PORT_AUDIO + ' RTP' + '\r\n\r\n'
 
 				#Enviamos el mensaje de respuesta:
 				self.wfile.write(bytes(answer, 'utf-8'))
@@ -129,13 +125,14 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
 				self.RTP_LIST.append(PORT_AUDIO)
 
 				#Añadimos al fichero LOG:
-				FICH_LOG(PATH_LOG, 'Send to', IP_CLIENT, PORT_CLIENT, answer)
+				FICH_LOG(PATH_LOG, 'Send to', IP_PROXY, PORT_PROXY, answer)
 
 				print('-----SENDING:\r\n' + answer)
 
 			elif method == 'ACK':
-				FICH_LOG(PATH_LOG, 'Received from', IP_PROXY, PORT_PROXY, answer)
-
+				#Escribimos en el fichero LOG:
+				FICH_LOG(PATH_LOG,'Received from',IP_PROXY, PORT_PROXY, LINE)				
+				
 				#Envio RTP:
 				#aEjecutar es un string con lo que se ha de ejecutar en la shell
 				aEjecutar = './mp32rtp -i ' + self.RTP_LIST[1]
@@ -143,10 +140,9 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
 				aEjecutar += '< ' + PATH_AUDIO
 				print ("LET'S RUN! ", aEjecutar)
 				os.system(aEjecutar)
-				#Añadimos al fichero LOG:
-				FICH_LOG(PATH_LOG, 'Send to', self.RTP['IP'], self.RTP['PORT'],'Audio File')
 
 				print('Finished transfer!')
+				#Escribimos en el fichero LOG:
 				FICH_LOG(PATH_LOG, 'Finished audio transfer','','','')
 
 			elif method == 'BYE':
