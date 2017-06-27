@@ -214,7 +214,10 @@ if __name__ == "__main__":
         m.update(b'PASSWD')
         new_response = m.hexdigest()
 
-        LINE = LINE + 'WWW Authenticate: Digest response= '
+        LINE_REGISTER = METHOD + ' sip:' + USERNAME + ':' + PORT
+        LINE_REGISTER += ' SIP/2.0\r\n' + 'Expires: ' + EXPIRES + '\r\n'
+
+        LINE = LINE_REGISTER + 'WWW Authenticate: Digest response= '
         LINE += new_response + '\r\n\r\n'
 
         #Enviamos la Autenticacion:
@@ -231,30 +234,33 @@ if __name__ == "__main__":
         
         print("-----RECEIVED: \r\n" + LINE)
 
-    elif response[0] == 'SIP/2.0 100 Trying':
+    elif response[1] == '100' and response[4] == '180' and response[7] == '200':
         #Escribimos en el fichero LOG:
-        LINE = '100 Trying + 180 Ringing + 200 OK'
+        LINE = 'Trying, Ringing y OK'
         FICH_LOG(PATH_LOG, 'Received from', IP_PROXY, PORT_PROXY, LINE)
         #Respuesta a INVITE: TRYING + RINGING + OK:
-        LINE = METHOD + 'sip:' + USER + ' SIP/2.0'
+        LINE = 'ACK sip:' + USER + ' SIP/2.0'
 
         my_socket.send(bytes(LINE, 'utf-8') + b'\r\n\r\n')
         FICH_LOG(PATH_LOG,'Send to', IP_PROXY, PORT_PROXY, LINE)
+
+        print('-----SENDING:\r\n' + LINE)
 
         #Envio RTP:
         # aEjecutar es un string con lo que se ha de ejecutar en la shell
         aEjecutar = './mp32rtp -i ' + IP
         aEjecutar += '-p' + PORT_AUDIO
         aEjecutar += '< ' + PATH_AUDIO
-
-        print ("Let's run", aEjecutar)
-
-        FICH_LOG(PATH_LOG, 'Send to', IP, PORT, PATH_AUDIO)
-        print('Finishing')
-
         os.system(aEjecutar)
 
-    elif response[0] == 'SIP/2.0 200 OK':
+        print ("Let's run", aEjecutar)
+        #Añadimos al fichero LOG:
+        FICH_LOG(PATH_LOG, 'Finished audio transfer', '', '', '')
+        print('Finished transfer')
+
+        data = my_socket.recv(int(PORT_PROXY))
+
+    elif response[1] == '200':
         #Escribimos en el fichero LOG:
         FICH_LOG(PATH_LOG, 'Finishing.', '', '', '')
 
