@@ -47,8 +47,6 @@ class XMLHandler(ContentHandler):
 			#Vaciamos el diccionario:
 			self.tag_dic = {}
 
-	def getData(self):
-		return self.list_dic
 
 class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
 	"""
@@ -84,6 +82,7 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
 
 		#Escribe dirección y puerto del cliente (de tupla client_address)
 		IP_CLIENT = str(self.client_address[0])
+		PORT_CLIENT = str(selef.client_address[1])
 
 		#Metodo que gestiona las peticiones:
 		while 1:
@@ -96,6 +95,9 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
 
 			method = text.decode('utf-8').split(' ')[0]
 
+			#Escribimos en el fichero LOG:
+			FICH_LOG(PATH_LOG, 'Received from', IP_CLIENT, PORT_CLIENT, LINE)
+
 			print('-----RECEIVED:\r\n' +  LINE)
 
 			if not method in self.METHODS:
@@ -103,13 +105,14 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
 				#Enviamos el mensaje de respuesta:
 				self.wfile.write(bytes(answer, 'utf-8'))
 				#Añadimos al fichero LOG:
-				FICH_LOG(PATH_LOG, 'Error', IP_CLIENT, '', answer)
+				FICH_LOG(PATH_LOG, 'Error', IP_CLIENT, PORT_CLIENT, answer)
 
 				print('-----SENDING:\r\n' + answer)
 
 			elif method == 'REGISTER':
 				#Comprobamos VERIFICACION:
 				line_slices = text.decode('utf-8').split()
+
 				if 'Digest' not in line_slices:
 					self.NONCE.append(str(random.randint(00000,99999)))
 
@@ -119,6 +122,8 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
 
 					#Enviamos el mensaje de respuesta:
 					self.wfile.write(bytes(answer, 'utf-8'))
+					#Escribimos en el fichero LOG:
+					FICH_LOG(PATH_LOG, 'Send to', IP_CLIENT, PORT_CLIENT, answer )
 
 					print('-----SENDING:\r\n' + answer)
 
@@ -127,7 +132,7 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
 					self.PORT = text.decode('utf-8').split()[1].split(':')[2]
 					self.USER = text.decode('utf-8').split()[1].split(':')[1]
 					self.EXPIRES = text.decode('utf-8').split()[4]
-					hresponse = text.decode('utf-8').split()[-1].split('=')[1]
+					hresponse = text.decode('utf-8').split()[-1]
 
 					#Consultamos con el fichero de PASSWD:
 					fich = open(DATA_PASSW, 'r')
@@ -157,7 +162,6 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
 				#Definimos las variables:
 				USER = text.decode('utf-8').split()[1].split(':')[1]
 				RTP_PORT = text.decode('utf-8').split()[-2]
-
 
 				if USER in self.client_dic.keys():
 					#Buscamos del DIC: IP y PORT:
@@ -192,45 +196,70 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
 				else:
 					answer = 'SIP/2.0 404 User Not Found\r\n\r\n'
 					self.wfile.write(bytes(answer, 'utf-8'))
+					#Escribimos en el fichero LOG:
+					FICH_LOG(PATH_LOG, 'Send to', IP_CLIENT, PORT_CLIENT, answer)
+
 
 					print("-----SENDING: \r\n" + LINE)
 
 			elif method == 'ACK':
-				answer = 'ACK RECEIVED\r\n\r\n'
-				self.wfile.write(bytes(answer, 'utf-8'))
+				USER = text.decode('utf-8').split()[1].split(':')[1]
+				#Buscamos del DIC: IP y PORT:
+				IP_SERV = self.client_dic[USER][0]
+				PORT_SERV = self.client_dic[USER][1]
 
 				#Escribimos en el fichero LOG:
-				FICH_LOG(PATH_LOG, 'Received from', IP_SERV, PORT_SERV, answer)
+				FICH_LOG(PATH_LOG, 'Received from', IP_SERV, PORT_SERV, LINE)
+
+				try:
+					# Creamos el socket, lo configuramos y lo atamos a un servidor/puerto
+					my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+					my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+					my_socket.connect((IP_SERV, int(PORT_SERV)))
+
+					#Enviando:
+					print("-----SENDING: \r\n" + LINE)
+					my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
+					#Escribimos en el fichero LOG:
+					FICH_LOG(PATH_LOG, 'Send to', IP_SERV, PORT_SERV, LINE)
+
+				except ConnectionRefusedError:
+					print('ERROR: No server listening at '+ str(IP_SERV) + ' at port: ' + str(PORT_SERV) + '\r\n\r\n')
+					#Escribimos en el fichero LOG:
+					FICH_LOG(PATH_LOG, 'Error', IP_SERV, PORT_SERV, '')
 
 			elif method == 'BYE':
 				#Buscamos del DIC: IP y PORT:
 				USER = text.decode('utf-8').split()[1].split(':')[1] 
 				IP_SERV = self.client_dic[USER][0]
 				PORT_SERV = self.client_dic[USER][1]
+				
+				try:
+					#Creamos el socket, lo configuramos y lo atamos a un servidor/puerto
+					my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+					my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+					my_socket.connect((IP_SERV, int(PORT_SERV)))
 
-				#Creamos el socket, lo configuramos y lo atamos a un servidor/puerto
-				my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-				my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-				my_socket.connect((IP_SERV, int(PORT_SERV)))
+					#Enviando al SERVER:
+					print("-----SENDING: \r\n" + LINE)
+					my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
+					#Escribimos en el fichero LOG:
+					FICH_LOG(PATH_LOG, 'Send to', IP_SERV, PORT_SERV, LINE)
 
-				#Enviando al SERVER:
-				print("-----SENDING: \r\n" + LINE)
-				my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
-				#Escribimos en el fichero LOG:
-				FICH_LOG(PATH_LOG, 'Send to', IP_SERV, PORT_SERV, LINE)
-
-				#Escribimos en el fichero LOG:
-				FICH_LOG(PATH_LOG, 'Received from', IP_SERV, PORT_SERV, LINE)
-
-
-				#Recibimos datos:
-				data = my_socket.recv(int(PORT_SERV))
-				LINE = data.decode('utf-8')
-				self.wfile.write(bytes(LINE, 'utf-8'))
-				#Añadimos al fichero LOG:
-				FICH_LOG(PATH_LOG, 'Send to', IP_CLIENT, '', LINE)
-				#Enviando al CLIENT:
-				print('-----SENDING:\r\n' + LINE)
+					#Recibimos datos:
+					data = my_socket.recv(int(PORT_SERV))
+					LINE = data.decode('utf-8')
+					self.wfile.write(bytes(LINE, 'utf-8'))
+					#Escribimos en el fichero LOG:
+					FICH_LOG(PATH_LOG, 'Received from', IP_SERV, PORT_SERV, LINE)
+					#Añadimos al fichero LOG:
+					FICH_LOG(PATH_LOG, 'Send to', IP_CLIENT, '', LINE)
+					#Enviando al CLIENT:
+					print('-----SENDING:\r\n' + LINE)
+					except ConnectionRefusedError:
+						print('ERROR: No server listening at '+ str(IP_SERV) + ' at port: ' + str(PORT_SERV) + '\r\n\r\n')
+						#Escribimos en el fichero LOG:
+						FICH_LOG(PATH_LOG, 'Error', IP_SERV, PORT_SERV, '')
 			
 			else:
 				answer = 'SIP/2.0 400 Bad Resquest\r\n\r\n'
