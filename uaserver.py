@@ -10,220 +10,220 @@ import os
 from uaclient import FICH_LOG
 from xml.sax.handler import ContentHandler
 
+
 class XMLHandler(ContentHandler):
-	def __init__(self):
-	# Iniciamos variables
 
-		#Diccionario delos datos de las etiquetas:
-		self.tag_dic = {}
-		#Lista donde guardar los diccionarios:
-		self.list_dic = []
+    def __init__(self):
+    #Iniciamos variables
 
-	def startElement(self,name,attrs):
-		#Almancena en un dic los datos del XML:
-		if name == 'account':
-			self.tag_dic['username'] = attrs.get('username','--')
-			self.tag_dic['passwd'] = attrs.get('passwd','--')
-			#Añadimos:
-			self.list_dic.append(self.tag_dic)
-			#Vaciamos el diccionario:
-			self.tag_dic = {}
+        #Diccionario delos datos de las etiquetas:
+        self.tag_dic = {}
+        #Lista donde guardar los diccionarios:
+        self.list_dic = []
 
-		elif name == 'uaserver':
-			self.tag_dic['UAS_IP'] = attrs.get('ip', '--')
-			self.tag_dic['UAS_Port'] = attrs.get('port','--')
-			#Añadimos:
-			self.list_dic.append(self.tag_dic)
-			#Vaciamos el diccionario:
-			self.tag_dic = {}
+    def startElement(self, name, attrs):
+        #Almancena en un dic los datos del XML:
+        if name == 'account':
+            self.tag_dic['username'] = attrs.get('username', '--')
+            self.tag_dic['passwd'] = attrs.get('passwd', '--')
+            #Añadimos:
+            self.list_dic.append(self.tag_dic)
+            #Vaciamos el diccionario:
+            self.tag_dic = {}
 
-		elif name == 'rtpaudio':
-			self.tag_dic['RTP_Port'] = attrs.get('port', '--')
-			#Añadimos:
-			self.list_dic.append(self.tag_dic)
-			#Vaciamos el diccionario:
-			self.tag_dic = {}
+        elif name == 'uaserver':
+            self.tag_dic['UAS_IP'] = attrs.get('ip', '--')
+            self.tag_dic['UAS_Port'] = attrs.get('port', '--')
+            #Añadimos:
+            self.list_dic.append(self.tag_dic)
+            #Vaciamos el diccionario:
+            self.tag_dic = {}
 
-		elif name == 'regproxy':
-			self.tag_dic['Reg_IP'] = attrs.get('ip', '--')
-			self.tag_dic['Reg_Port'] = attrs.get('port','--')
-			#Añadimos:
-			self.list_dic.append(self.tag_dic)
-			#Vaciamos el diccionario:
-			self.tag_dic = {}
+        elif name == 'rtpaudio':
+            self.tag_dic['RTP_Port'] = attrs.get('port', '--')
+            #Añadimos:
+            self.list_dic.append(self.tag_dic)
+            #Vaciamos el diccionario:
+            self.tag_dic = {}
 
-		elif name == 'log':
-			self.tag_dic['PATH'] = attrs.get('path','--')
-			#Añadimos:
-			self.list_dic.append(self.tag_dic)
-			#Vaciamos el diccionario:
-			self.tag_dic = {}
+        elif name == 'regproxy':
+            self.tag_dic['Reg_IP'] = attrs.get('ip', '--')
+            self.tag_dic['Reg_Port'] = attrs.get('port', '--')
+            #Añadimos:
+            self.list_dic.append(self.tag_dic)
+            #Vaciamos el diccionario:
+            self.tag_dic = {}
 
-		elif name == 'audio':
-			self.tag_dic['Audio_PATH'] = attrs.get('path','--')
-			#Añadimos:
-			self.list_dic.append(tag_dic)
-			#Vaciamos el diccionario:
-			self.tag_dic = {}
+        elif name == 'log':
+            self.tag_dic['PATH'] = attrs.get('path', '--')
+            #Añadimos:
+            self.list_dic.append(self.tag_dic)
+            #Vaciamos el diccionario:
+            self.tag_dic = {}
 
-	def getData(self):
-		return self.list_dic
+        elif name == 'audio':
+            self.tag_dic['Audio_PATH'] = attrs.get('path', '--')
+            #Añadimos:
+            self.list_dic.append(tag_dic)
+            #Vaciamos el diccionario:
+            self.tag_dic = {}
+
 
 class ProxyHandler(socketserver.DatagramRequestHandler):
-	"""
-	Proxy server class.
-	"""
+    """
+    Proxy server class.
+    """
 
-	RTP_LIST = []
+    RTP_LIST = []
 
-	METHODS = ['INVITE', 'ACK', 'BYE']
+    METHODS = ['INVITE', 'ACK', 'BYE']
 
-	def handle(self):
-		# Escribe dirección y puerto del cliente (de tupla client_address)
-		IP_CLIENT = str(self.client_address[0])
-		PORT_CLIENT = int(self.client_address[1])
+    def handle(self):
+        # Escribe dirección y puerto del cliente (de tupla client_address)
+        IP_CLIENT = str(self.client_address[0])
+        PORT_CLIENT = int(self.client_address[1])
 
-		while 1:
-			# Leyendo línea a línea lo que nos envía el cliente
-			text = self.rfile.read()
-			LINE = text.decode('utf-8')
+        while 1:
+            # Leyendo línea a línea lo que nos envía el cliente
+            text = self.rfile.read()
+            LINE = text.decode('utf-8')
 
-			#Para salir del bucle (si no hay mas lineas):
-			if not LINE:
-				break
+            #Para salir del bucle (si no hay mas lineas):
+            if not LINE:
+                break
 
-			method = text.decode('utf-8').split(' ')[0]
-			print('-----RECEIVED:\r\n' + LINE)
+            method = text.decode('utf-8').split(' ')[0]
+            print('-----RECEIVED:\r\n' + LINE)
 
-			if not method in self.METHODS:
-				answer = 'SIP/2.0 405 Method Not Allowed\r\n\r\n'
-				#Enviamos el mensaje de respuesta:
-				self.wfile.write(bytes(answer, 'utf-8'))
-				#Añadimos al fichero LOG:
-				FICH_LOG(PATH_LOG, 'Error', IP_CLIENT, PORT_CLIENT, '')
+            if not method in self.METHODS:
+                answer = 'SIP/2.0 405 Method Not Allowed\r\n\r\n'
+                #Enviamos el mensaje de respuesta:
+                self.wfile.write(bytes(answer, 'utf-8'))
+                #Añadimos al fichero LOG:
+                FICH_LOG(PATH_LOG, 'Error', IP_CLIENT, PORT_CLIENT, '')
 
-			elif method == 'INVITE':
-				#Escribimos en el fichero LOG:
-				FICH_LOG(PATH_LOG,'Received from',IP_PROXY, PORT_PROXY, LINE)
-                
-				answer = 'SIP/2.0 100 Trying\r\n\r\n'
-				answer += 'SIP/2.0 180 Ringing\r\n\r\n'
-				answer += 'SIP/2.0 200 OK\r\n\r\n'
-				#Añadimos las cabeceras: Header + Separator:
-				answer += 'Content-Type: application/sdp\r\n\r\n'
-				#Message Body:
-				answer += 'v=0\r\n' + 'o=' + USERNAME + ' ' + IP + '\r\n'
-				answer += 's=Prueba' + '\r\n' + 't=0' + '\r\n'
-				answer += 'm=audio ' + PORT_AUDIO + ' RTP' + '\r\n\r\n'
+            elif method == 'INVITE':
+                #Escribimos en el fichero LOG:
+                FICH_LOG(PATH_LOG, 'Received from', IP_PROXY, PORT_PROXY, LINE)
 
-				#Enviamos el mensaje de respuesta:
-				self.wfile.write(bytes(answer, 'utf-8'))
+                answer = 'SIP/2.0 100 Trying\r\n\r\n'
+                answer += 'SIP/2.0 180 Ringing\r\n\r\n'
+                answer += 'SIP/2.0 200 OK\r\n\r\n'
+                #Añadimos las cabeceras: Header + Separator:
+                answer += 'Content-Type: application/sdp\r\n\r\n'
+                #Message Body:
+                answer += 'v=0\r\n' + 'o=' + USERNAME + ' ' + IP + '\r\n'
+                answer += 's=Prueba' + '\r\n' + 't=0' + '\r\n'
+                answer += 'm=audio ' + PORT_AUDIO + ' RTP' + '\r\n\r\n'
 
-				#Añadimos al diccionario RTP:
-				self.RTP_LIST.append(USERNAME)
-				self.RTP_LIST.append(IP)
-				self.RTP_LIST.append(PORT_AUDIO)
+                #Enviamos el mensaje de respuesta:
+                self.wfile.write(bytes(answer, 'utf-8'))
 
-				#Añadimos al fichero LOG:
-				FICH_LOG(PATH_LOG, 'Send to', IP_PROXY, PORT_PROXY, answer)
+                #Añadimos al diccionario RTP:
+                self.RTP_LIST.append(USERNAME)
+                self.RTP_LIST.append(IP)
+                self.RTP_LIST.append(PORT_AUDIO)
 
-				print('-----SENDING:\r\n' + answer)
+                #Añadimos al fichero LOG:
+                FICH_LOG(PATH_LOG, 'Send to', IP_PROXY, PORT_PROXY, answer)
 
-			elif method == 'ACK':
-				#Escribimos en el fichero LOG:
-				FICH_LOG(PATH_LOG,'Received from',IP_PROXY, PORT_PROXY, LINE)				
-				
-				#Envio RTP:
-				#aEjecutar es un string con lo que se ha de ejecutar en la shell
-				aEjecutar = './mp32rtp -i ' + self.RTP_LIST[1]
-				aEjecutar += '-p' + self.RTP_LIST[2]
-				aEjecutar += '< ' + PATH_AUDIO
-				print ("LET'S RUN! ", aEjecutar)
-				os.system(aEjecutar)
+                print('-----SENDING:\r\n' + answer)
 
-				print('Finished transfer!')
-				#Escribimos en el fichero LOG:
-				FICH_LOG(PATH_LOG, 'Finished audio transfer','','','')
+            elif method == 'ACK':
+                #Escribimos en el fichero LOG:
+                FICH_LOG(PATH_LOG, 'Received from', IP_PROXY, PORT_PROXY, LINE)
 
-			elif method == 'BYE':
-				#Añadimos al fichero LOG:
-				FICH_LOG(PATH_LOG, 'Received from', IP_PROXY, PORT_PROXY, LINE)
+                #Envio RTP:
+                aEjecutar = './mp32rtp -i ' + self.RTP_LIST[1]
+                aEjecutar += '-p' + self.RTP_LIST[2]
+                aEjecutar += '< ' + PATH_AUDIO
+                print ("LET'S RUN! ", aEjecutar)
+                os.system(aEjecutar)
 
-				answer = 'SIP/2.0 200 OK\r\n\r\n'
-				#Enviamos el mensaje de respuesta:
-				self.wfile.write(bytes(answer, 'utf-8'))
+                print('Finished transfer!')
+                #Escribimos en el fichero LOG:
+                FICH_LOG(PATH_LOG, 'Finished audio transfer', '', '', '')
 
-				#Añadimos al fichero LOG:
-				FICH_LOG(PATH_LOG, 'Send to', IP_PROXY, PORT_PROXY, answer)
+            elif method == 'BYE':
+                #Añadimos al fichero LOG:
+                FICH_LOG(PATH_LOG, 'Received from', IP_PROXY, PORT_PROXY, LINE)
 
-				print('-----SENDING:\r\n' + answer)
+                answer = 'SIP/2.0 200 OK\r\n\r\n'
+                #Enviamos el mensaje de respuesta:
+                self.wfile.write(bytes(answer, 'utf-8'))
 
-			else:
-				FICH_LOG(PATH_LOG, 'Received from', RECEPTOR_IP, RECEPTOR_PORT, LINE)
+                #Añadimos al fichero LOG:
+                FICH_LOG(PATH_LOG, 'Send to', IP_PROXY, PORT_PROXY, answer)
 
-				answer = 'SIP/2.0 400 Bad Request\r\n\r\n'
-				#Enviamos el mensaje de respuesta:
-				self.wfile.write(bytes(answer, 'utf-8'))
-				#Añadimos al fichero LOG:
-				response = answer.split('\r\n')
-				#LINE = ' '.join(response)
-				FICH_LOG(PATH_LOG, 'Error', IP_CLIENT, PORT_CLIENT, '')
+                print('-----SENDING:\r\n' + answer)
 
-				print('-----SENDING:\r\n' + answer)
+            else:
+                FICH_LOG(PATH_LOG, 'Received from',
+                         RECEPTOR_IP, RECEPTOR_PORT, LINE)
+
+                answer = 'SIP/2.0 400 Bad Request\r\n\r\n'
+                #Enviamos el mensaje de respuesta:
+                self.wfile.write(bytes(answer, 'utf-8'))
+                #Añadimos al fichero LOG:
+                response = answer.split('\r\n')
+                #LINE = ' '.join(response)
+                FICH_LOG(PATH_LOG, 'Error', IP_CLIENT, PORT_CLIENT, '')
+
+                print('-----SENDING:\r\n' + answer)
 
 
 if __name__ == "__main__":
 
-	if len(sys.argv) != 2:
-		sys.exit("Usage: python3 uaserver.py config")
+    if len(sys.argv) != 2:
+        sys.exit("Usage: python3 uaserver.py config")
 
-	try:
-		CONFIG = sys.argv[1]
+    try:
+        CONFIG = sys.argv[1]
 
-		if not os.path.exists(CONFIG):
-			print("File doesn't exist!")
-			sys.exit("Usage: python3 uaserver.py config")
+        if not os.path.exists(CONFIG):
+            print("File doesn't exist!")
+            sys.exit("Usage: python3 uaserver.py config")
 
-	except IndexError:
-		sys.exit("Usage: python3 uaserver.py config")
+    except IndexError:
+        sys.exit("Usage: python3 uaserver.py config")
 
-	#Abrimos el fichero XML
-	fich = open(CONFIG, 'r')
-	line = fich.readlines()
-	fich.close()
+    #Abrimos el fichero XML
+    fich = open(CONFIG, 'r')
+    line = fich.readlines()
+    fich.close()
 
-	#USERNAME + PASSWORD:
-	USERNAME = line[4].split(">")[1].split("<")[0]
-	PASSWORD = line[5].split(">")[1].split("<")[0]
+    #USERNAME + PASSWORD:
+    USERNAME = line[4].split(">")[1].split("<")[0]
+    PASSWORD = line[5].split(">")[1].split("<")[0]
 
-	#UASERVER, IP + PUERTO:
-	IP = line[8].split(">")[1].split("<")[0]
-	PORT = line[9].split(">")[1].split("<")[0]
+    #UASERVER, IP + PUERTO:
+    IP = line[8].split(">")[1].split("<")[0]
+    PORT = line[9].split(">")[1].split("<")[0]
 
-	#RTP AUDIO:
-	PORT_AUDIO = line[12].split(">")[1].split("<")[0]
+    #RTP AUDIO:
+    PORT_AUDIO = line[12].split(">")[1].split("<")[0]
 
-	#PROXY, IP + PUERTO:
-	IP_PROXY = line[15].split(">")[1].split("<")[0]
-	PORT_PROXY = line[16].split(">")[1].split("<")[0]
+    #PROXY, IP + PUERTO:
+    IP_PROXY = line[15].split(">")[1].split("<")[0]
+    PORT_PROXY = line[16].split(">")[1].split("<")[0]
 
-	#LOG(localización del fichero de log):
-	PATH_LOG = line[19].split(">")[1].split("<")[0]
+    #LOG(localización del fichero de log):
+    PATH_LOG = line[19].split(">")[1].split("<")[0]
 
-	#AUDIO, PATH(localizacion del ficherod el audio):
-	PATH_AUDIO = line[22].split(">")[1].split("<")[0]
+    #AUDIO, PATH(localizacion del ficherod el audio):
+    PATH_AUDIO = line[22].split(">")[1].split("<")[0]
 
-	# Creamos el socket, lo configuramos y lo atamos a un servidor/puerto
-	my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-	my_socket.connect((IP_PROXY, int(PORT_PROXY)))
+    # Creamos el socket, lo configuramos y lo atamos a un servidor/puerto
+    my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    my_socket.connect((IP_PROXY, int(PORT_PROXY)))
 
-	# Creamos servidor de eco y escuchamos
-	serv = socketserver.UDPServer((IP, int(PORT)), ProxyHandler)
-	print('Listening...')
+    # Creamos servidor de eco y escuchamos
+    serv = socketserver.UDPServer((IP, int(PORT)), ProxyHandler)
+    print('Listening...')
 
-	try:
-		serv.serve_forever()
-	except KeyboardInterrupt:
-		FICH_LOG(PATH_LOG, 'Finising...', IP_PROXY, PORT_PROXY, '')
-		sys.exit('\r\nEnded server')
+    try:
+        serv.serve_forever()
+    except KeyboardInterrupt:
+        FICH_LOG(PATH_LOG, 'Finising...', IP_PROXY, PORT_PROXY, '')
+        sys.exit('\r\nEnded server')
