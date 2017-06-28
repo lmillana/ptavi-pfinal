@@ -3,24 +3,24 @@
 <config>
     <account> 
         <username>zape@moreno.com</username>
-        <passwd>maslocuras</passwd> 
-    </acount>
+        <passwd>maslocuras</passwd>
+    </account>
     <uaserver>
-        <ip>127.0.0.1</ip> 
+        <ip>127.0.0.1</ip>
         <puerto>9876</puerto>
     </uaserver>
     <rtpaudio>
         <puerto>8765</puerto>
     </rtpaudio>
     <regproxy>
-        <ip>127.0.0.1</ip> 
+        <ip>127.0.0.1</ip>
         <puerto>7777</puerto>
     </regproxy>
     <log>
         <path>log_ua2.txt</path>
     </log>
-    <audio> 
+    <audio>
         <path>cancion.mp3</path>
-    </audio> 
+    </audio>
 </config>
     
