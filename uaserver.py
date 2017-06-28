@@ -1,8 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-"""
-Programa User Agent Server.
-"""
+"""Programa User Agent Server."""
+
 import sys
 import socket
 import socketserver
@@ -14,65 +13,14 @@ from xml.sax.handler import ContentHandler
 class XMLHandler(ContentHandler):
 
     def __init__(self):
-    #Iniciamos variables
-
         #Diccionario delos datos de las etiquetas:
         self.tag_dic = {}
         #Lista donde guardar los diccionarios:
         self.list_dic = []
 
-    def startElement(self, name, attrs):
-        #Almancena en un dic los datos del XML:
-        if name == 'account':
-            self.tag_dic['username'] = attrs.get('username', '--')
-            self.tag_dic['passwd'] = attrs.get('passwd', '--')
-            #Añadimos:
-            self.list_dic.append(self.tag_dic)
-            #Vaciamos el diccionario:
-            self.tag_dic = {}
-
-        elif name == 'uaserver':
-            self.tag_dic['UAS_IP'] = attrs.get('ip', '--')
-            self.tag_dic['UAS_Port'] = attrs.get('port', '--')
-            #Añadimos:
-            self.list_dic.append(self.tag_dic)
-            #Vaciamos el diccionario:
-            self.tag_dic = {}
-
-        elif name == 'rtpaudio':
-            self.tag_dic['RTP_Port'] = attrs.get('port', '--')
-            #Añadimos:
-            self.list_dic.append(self.tag_dic)
-            #Vaciamos el diccionario:
-            self.tag_dic = {}
-
-        elif name == 'regproxy':
-            self.tag_dic['Reg_IP'] = attrs.get('ip', '--')
-            self.tag_dic['Reg_Port'] = attrs.get('port', '--')
-            #Añadimos:
-            self.list_dic.append(self.tag_dic)
-            #Vaciamos el diccionario:
-            self.tag_dic = {}
-
-        elif name == 'log':
-            self.tag_dic['PATH'] = attrs.get('path', '--')
-            #Añadimos:
-            self.list_dic.append(self.tag_dic)
-            #Vaciamos el diccionario:
-            self.tag_dic = {}
-
-        elif name == 'audio':
-            self.tag_dic['Audio_PATH'] = attrs.get('path', '--')
-            #Añadimos:
-            self.list_dic.append(tag_dic)
-            #Vaciamos el diccionario:
-            self.tag_dic = {}
-
 
 class ProxyHandler(socketserver.DatagramRequestHandler):
-    """
-    Proxy server class.
-    """
+    """Proxy server class."""
 
     RTP_LIST = []
 
@@ -135,8 +83,8 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
 
                 #Envio RTP:
                 aEjecutar = './mp32rtp -i ' + self.RTP_LIST[1]
-                aEjecutar += '-p' + self.RTP_LIST[2]
-                aEjecutar += '< ' + PATH_AUDIO
+                aEjecutar += ' -p ' + self.RTP_LIST[2]
+                aEjecutar += ' < ' + PATH_AUDIO
                 print ("LET'S RUN! ", aEjecutar)
                 os.system(aEjecutar)
 
@@ -166,7 +114,7 @@ class ProxyHandler(socketserver.DatagramRequestHandler):
                 self.wfile.write(bytes(answer, 'utf-8'))
                 #Añadimos al fichero LOG:
                 response = answer.split('\r\n')
-                #LINE = ' '.join(response)
+                print(response)
                 FICH_LOG(PATH_LOG, 'Error', IP_CLIENT, PORT_CLIENT, '')
 
                 print('-----SENDING:\r\n' + answer)
