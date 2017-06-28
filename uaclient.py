@@ -1,8 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-"""
-Programa User Agent Client
-"""
+"""Programa User Agent Client"""
 
 import sys
 import socket
@@ -31,65 +29,16 @@ def FICH_LOG(fichero, EVENT, IP, PORT, LINE):
 
 
 class XMLHandler(ContentHandler):
+    """Cliente UDP simple SIP."""
 
     def __init__(self):
-    #Iniciamos variables:
-
         #Diccionario delos datos de las etiquetas:
         self.tag_dic = {}
         #Lista donde guardar los diccionarios:
         self.list_dic = []
 
-    def startElement(self, name, attrs):
-        #Almacena en un dic los datos del XML:
-        if name == 'account':
-            self.tag_dic['username'] = attrs.get('username', '--')
-            self.tag_dic['passwd'] = attrs.get('passwd', '--')
-            #Añadimos:
-            self.list_dic.append(self.tag_dic)
-            #Vaciamos el diccionario:
-            self.tag_dic = {}
-
-        elif name == 'uaserver':
-            self.tag_dic['UAS_IP'] = attrs.get('ip', '--')
-            self.tag_dic['UAS_Port'] = attrs.get('port', '--')
-            #Añadimos:
-            self.list_dic.append(self.tag_dic)
-            #Vaciamos el diccionario:
-            self.tag_dic = {}
-
-        elif name == 'rtpaudio':
-            self.tag_dic['RTP_Port'] = attrs.get('port', '--')
-            #Añadimos:
-            self.list_dic.append(self.tag_dic)
-            #Vaciamos el diccionario:
-            self.tag_dic = {}
-
-        elif name == 'regproxy':
-            self.tag_dic['Reg_IP'] = attrs.get('ip', '--')
-            self.tag_dic['Reg_Port'] = attrs.get('port', '--')
-            #Añadimos:
-            self.list_dic.append(self.tag_dic)
-            #Vaciamos el diccionario:
-            self.tag_dic = {}
-
-        elif name == 'log':
-            self.tag_dic['PATH'] = attrs.get('path', '--')
-            #Añadimos:
-            self.list_dic.append(self.tag_dic)
-            #Vaciamos el diccionario:
-            self.tag_dic = {}
-
-        elif name == 'audio':
-            self.tag_dic['Audio_PATH'] = attrs.get('path', '--')
-            #Añadimos:
-            self.list_dic.append(tag_dic)
-            #Vaciamos el diccionario:
-            self.tag_dic = {}
-
 
 if __name__ == "__main__":
-    # Cliente UDP simple SIP
 
     if len(sys.argv) != 4:
         sys.exit("Usage: python3 uaclient.py config method option")
@@ -165,9 +114,6 @@ if __name__ == "__main__":
     elif METHOD == 'BYE':
         LINE = METHOD + ' sip:' + USER + ' SIP/2.0\r\n\r\n'
 
-    #Escribimos en fichero LOG:
-    #FICH_LOG(PATH_LOG, 'Sent to', IP_PROXY, PORT_PROXY, LINE)
-
     try:
         # Creamos el socket, lo configuramos y lo atamos a un servidor/puerto
         my_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -209,16 +155,17 @@ if __name__ == "__main__":
     #Comportamiento según la respuesta:
     if response[1] == '401':
         #Enviamos Register con Autenticación:
-        m = hashlib.sha1()
         NONCE = response[-1].split('=')[1]
-        m.update(b'NONCE')
-        m.update(b'PASSWD')
+        m = hashlib.md5()
+        m.update(bytes(NONCE, 'utf-8'))
+        m.update(bytes(PASSWD, 'utf-8'))
+        m.digest
         new_response = m.hexdigest()
 
         LINE_REGISTER = METHOD + ' sip:' + USERNAME + ':' + PORT
         LINE_REGISTER += ' SIP/2.0\r\n' + 'Expires: ' + EXPIRES + '\r\n'
 
-        LINE = LINE_REGISTER + 'WWW Authenticate: Digest response= '
+        LINE = LINE_REGISTER + 'WWW-Authenticate: Digest response='
         LINE += new_response + '\r\n\r\n'
 
         #Enviamos la Autenticacion:
@@ -250,14 +197,14 @@ if __name__ == "__main__":
         #Envio RTP:
         # aEjecutar es un string con lo que se ha de ejecutar en la shell
         aEjecutar = './mp32rtp -i ' + IP
-        aEjecutar += '-p' + PORT_AUDIO
-        aEjecutar += '< ' + PATH_AUDIO
+        aEjecutar += ' -p ' + str(8765)
+        aEjecutar += ' < ' + PATH_AUDIO
         os.system(aEjecutar)
 
-        print ("Let's run", aEjecutar)
+        print ("LET'S RUN! ", aEjecutar)
         #Añadimos al fichero LOG:
         FICH_LOG(PATH_LOG, 'Finished audio transfer', '', '', '')
-        print('Finished transfer')
+        print('Finished transfer!')
 
         data = my_socket.recv(int(PORT_PROXY))
 
