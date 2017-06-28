@@ -11,6 +11,7 @@ import time
 import hashlib
 from xml.sax.handler import ContentHandler
 
+
 def FICH_LOG(fichero, EVENT, IP, PORT, LINE):
     fich = open(fichero, 'a')
     TIME_ACT = time.strftime("%Y%m%d%H%M%S", time.gmtime(time.time()))
@@ -28,64 +29,63 @@ def FICH_LOG(fichero, EVENT, IP, PORT, LINE):
     fich.write(data)
     fich.close()
 
+
 class XMLHandler(ContentHandler):
-	def __init__(self):
-	# Iniciamos variables
 
-		#Diccionario delos datos de las etiquetas:
-		self.tag_dic = {}
-		#Lista donde guardar los diccionarios:
-		self.list_dic = []
+    def __init__(self):
+    #Iniciamos variables:
 
-	def startElement(self,name,attrs):
+        #Diccionario delos datos de las etiquetas:
+        self.tag_dic = {}
+        #Lista donde guardar los diccionarios:
+        self.list_dic = []
+
+    def startElement(self, name, attrs):
         #Almacena en un dic los datos del XML:
-		if name == 'account':
-			self.tag_dic['username'] = attrs.get('username','--')
-			self.tag_dic['passwd'] = attrs.get('passwd','--')
-			#Añadimos:
-			self.list_dic.append(self.tag_dic)
-			#Vaciamos el diccionario:
-			self.tag_dic = {}
+        if name == 'account':
+            self.tag_dic['username'] = attrs.get('username', '--')
+            self.tag_dic['passwd'] = attrs.get('passwd', '--')
+            #Añadimos:
+            self.list_dic.append(self.tag_dic)
+            #Vaciamos el diccionario:
+            self.tag_dic = {}
 
-		elif name == 'uaserver':
-			self.tag_dic['UAS_IP'] = attrs.get('ip', '--')
-			self.tag_dic['UAS_Port'] = attrs.get('port','--')
-			#Añadimos:
-			self.list_dic.append(self.tag_dic)
-			#Vaciamos el diccionario:
-			self.tag_dic = {}
+        elif name == 'uaserver':
+            self.tag_dic['UAS_IP'] = attrs.get('ip', '--')
+            self.tag_dic['UAS_Port'] = attrs.get('port', '--')
+            #Añadimos:
+            self.list_dic.append(self.tag_dic)
+            #Vaciamos el diccionario:
+            self.tag_dic = {}
 
-		elif name == 'rtpaudio':
-			self.tag_dic['RTP_Port'] = attrs.get('port', '--')
-			#Añadimos:
-			self.list_dic.append(self.tag_dic)
-			#Vaciamos el diccionario:
-			self.tag_dic = {}
+        elif name == 'rtpaudio':
+            self.tag_dic['RTP_Port'] = attrs.get('port', '--')
+            #Añadimos:
+            self.list_dic.append(self.tag_dic)
+            #Vaciamos el diccionario:
+            self.tag_dic = {}
 
-		elif name == 'regproxy':
-			self.tag_dic['Reg_IP'] = attrs.get('ip', '--')
-			self.tag_dic['Reg_Port'] = attrs.get('port','--')
-			#Añadimos:
-			self.list_dic.append(self.tag_dic)
-			#Vaciamos el diccionario:
-			self.tag_dic = {}
+        elif name == 'regproxy':
+            self.tag_dic['Reg_IP'] = attrs.get('ip', '--')
+            self.tag_dic['Reg_Port'] = attrs.get('port', '--')
+            #Añadimos:
+            self.list_dic.append(self.tag_dic)
+            #Vaciamos el diccionario:
+            self.tag_dic = {}
 
-		elif name == 'log':
-			self.tag_dic['PATH'] = attrs.get('path','--')
-			#Añadimos:
-			self.list_dic.append(self.tag_dic)
-			#Vaciamos el diccionario:
-			self.tag_dic = {}
+        elif name == 'log':
+            self.tag_dic['PATH'] = attrs.get('path', '--')
+            #Añadimos:
+            self.list_dic.append(self.tag_dic)
+            #Vaciamos el diccionario:
+            self.tag_dic = {}
 
-		elif name == 'audio':
-			self.tag_dic['Audio_PATH'] = attrs.get('path','--')
-			#Añadimos:
-			self.list_dic.append(tag_dic)
-			#Vaciamos el diccionario:
-			self.tag_dic = {}
-
-	def getData (self):
-		return self.list_dic
+        elif name == 'audio':
+            self.tag_dic['Audio_PATH'] = attrs.get('path', '--')
+            #Añadimos:
+            self.list_dic.append(tag_dic)
+            #Vaciamos el diccionario:
+            self.tag_dic = {}
 
 
 if __name__ == "__main__":
@@ -179,9 +179,10 @@ if __name__ == "__main__":
         my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
         #Escribimos en el fichero LOG:
         FICH_LOG(PATH_LOG, 'Send to', IP_PROXY, PORT_PROXY, LINE)
-    
+
     except socket.error:
-        sys.exit('ERROR: No server listening at '+ IP_PROXY + 'Port: '+ PORT_PROXY)
+        sys.exit('ERROR: No server listening at ' + IP_PROXY +
+                 'Port: ' + PORT_PROXY)
         #Escribimos en el fichero LOG:
         FICH_LOG(PATH_LOG, 'Error', IP, PORT, '')
         sys.exit(FICH_LOG)
@@ -231,10 +232,10 @@ if __name__ == "__main__":
         LINE = data.decode('utf-8')
         #Escribimos en el fichero LOG:
         FICH_LOG(PATH_LOG, 'Received from', IP_PROXY, PORT_PROXY, LINE)
-        
+
         print("-----RECEIVED: \r\n" + LINE)
 
-    elif response[1] == '100' and response[4] == '180' and response[7] == '200':
+    elif response[1] == '100' and response[4] == '180':
         #Escribimos en el fichero LOG:
         LINE = 'Trying, Ringing y OK'
         FICH_LOG(PATH_LOG, 'Received from', IP_PROXY, PORT_PROXY, LINE)
@@ -242,7 +243,7 @@ if __name__ == "__main__":
         LINE = 'ACK sip:' + USER + ' SIP/2.0'
 
         my_socket.send(bytes(LINE, 'utf-8') + b'\r\n\r\n')
-        FICH_LOG(PATH_LOG,'Send to', IP_PROXY, PORT_PROXY, LINE)
+        FICH_LOG(PATH_LOG, 'Send to', IP_PROXY, PORT_PROXY, LINE)
 
         print('-----SENDING:\r\n' + LINE)
 
