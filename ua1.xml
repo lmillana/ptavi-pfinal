@@ -2,9 +2,9 @@
 
 <config>
     <account>
-         <username>zipi@rubio.com </username>
+         <username>zipi@rubio.com</username>
          <passwd>locuras</passwd>
-    </acount>
+    </account>
     <uaserver>
         <ip>127.0.0.1</ip> 
         <puerto>9090</puerto>
