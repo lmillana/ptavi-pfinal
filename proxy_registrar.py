@@ -9,6 +9,9 @@ import socket
 import socketserver
 import random
 from xml.sax.handler import ContentHandler
+import hashlib
+import json
+import time
 
 
 class XMLHandler(ContentHandler):
@@ -20,56 +23,40 @@ class XMLHandler(ContentHandler):
         #Lista donde guardar los diccionarios:
         self.list_dic = []
 
-    def startElement(self, name, attrs):
-        #Almacena en un dic los datos del XML:
-        if name == 'server':
-            self.tag_dic['username'] = attrs.get('username', '--')
-            self.tag_dic['IP'] = attrs.get('ip', '--')
-            self.tag_dic['PORT'] = attrs.get('port', '--')
-            #Añadimos:
-            self.list_dic.append(self.tag_dic)
-            #Vaciamos el diccionario:
-            self.tag_dic = {}
 
-        elif name == 'database':
-            self.tag_dic['PATH'] = attrs.get('path', '--')
-            self.tag_dic['passwdpath'] = attrs.get('passwdpath', '--')
-            #Añadimos:
-            self.list_dic.append(self.tag_dic)
-            #Vaciamos el diccionario:
-            self.tag_dic = {}
-
-        elif name == 'log':
-            self.tag_dic['path'] = attrs.get('path', '--')
-            #Añadimos:
-            self.list_dic.append(self.tag_dic)
-            #Vaciamos el diccionario:
-            self.tag_dic = {}
+def Find_Passwd(USER, FICH):
+    """Comprueba la contraseña para cada USER."""
+    file = open(FICH, "r")
+    LINES = file.readlines()
+    PASSWORD = ''
+    for line in LINES:
+        USER_LINE = line.split(" ")[1]
+        if USER == USER_LINE:
+            PASSWORD = line.split(" ")[3]
+    return PASSWORD
 
 
 class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
-    """
-    Proxy-Registrar server class
-    """
+    """Proxy-Registrar server class."""
 
     #Diccionario de clientes:
     client_dic = {}
 
-    def register2json(self):
-        #Fichero JSON: user + dic + time
-        json.dump(self.client_dic, open('registered.json', 'w'))
-
     def json2registered(self):
-        #Metodo que comprueba si hay fichero JSON.
+        """Metodo que comprueba si hay fichero JSON."""
         try:
-            with open('registered.json') as client_file:
-                #Lee su contenido y lo usa como dic de user.
+            with open("registered.json", "r") as client_file:
+                #Lee su contenido y lo usa como dic de USER.
                 self.client_dic = json.load(client_file)
                 self.file_exists = True
         except:
-            #Actua como si no hubiera fichero JSON
             self.file_exists = False
 
+    def register2json(self):
+        """Fichero JSON: user + dic + time"""
+        with open("registered.json", "w") as jsonfile:
+            json.dump(self.client_dic, jsonfile, indent=4, sort_keys=True,
+                      separators=(',', ':'))
 
     METHODS = ['REGISTER', 'INVITE', 'ACK', 'BYE']
 
@@ -77,7 +64,7 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
     NONCE = []
 
     def handle(self):
-        #¿Fichero JSON?
+        """Metodo que gestiona las peticiones."""
         self.json2registered()
 
         #Escribe dirección y puerto del cliente (de tupla client_address)
@@ -112,12 +99,14 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
             elif method == 'REGISTER':
                 #Comprobamos VERIFICACION:
                 line_slices = text.decode('utf-8').split()
+                expires = text.decode('utf-8').split()[4]
 
                 if 'Digest' not in line_slices:
-                    self.NONCE.append(str(random.randint(00000, 99999)))
+                    self.NONCE.append(str(random.randint(00000000000000000000,
+                                                         9999999999999999999)))
 
                     answer = 'SIP/2.0 401 Unauthorized\r\n'
-                    answer += 'WWW Authenticate: Digest nonce='
+                    answer += 'WWW-Authenticate: Digest nonce='
                     answer += self.NONCE[0] + '\r\n\r\n'
 
                     #Enviamos el mensaje de respuesta:
@@ -128,40 +117,73 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
 
                     print('-----SENDING:\r\n' + answer)
 
+                elif int(expires) == 0:
+                    self.USER = text.decode('utf-8').split()[1].split(':')[1]
+                    self.PORT = text.decode('utf-8').split()[1].split(':')[2]
+                    self.json2registered()
+
+                    answer = 'SIP/2.0 200 OK'
+                    #Escribimos mensaje de respuesta:
+                    self.wfile.write(bytes(answer, 'utf-8'))
+
+                    try:
+                        del self.client_dic[USER]
+                    except:
+                        print('-----USER NOT FOUND')
+
+                    self.Client_Expired()
+                    self.json2registered()
+
                 else:
                     #Guardamos la peticion REGISTER:
-                    self.PORT = text.decode('utf-8').split()[1].split(':')[2]
                     self.USER = text.decode('utf-8').split()[1].split(':')[1]
+                    self.PORT = text.decode('utf-8').split()[1].split(':')[2]
                     self.EXPIRES = text.decode('utf-8').split()[4]
-                    hresponse = text.decode('utf-8').split()[-1]
+                    hresponse = text.decode('utf-8').split()[-1].split('=')[1]
 
-                    #Consultamos con el fichero de PASSWD:
-                    fich = open(DATA_PASSW, 'r')
-                    line = fich.readlines()
-                    print(line)
-                    fich.close()
+                    #Comparamos CONTRASEÑAS:
+                    my_digest = hashlib.md5()
+                    my_digest.update(bytes(self.NONCE[0], 'utf-8'))
+                    my_digest.update(bytes(Find_Passwd(self.USER, DATA_PASSW),
+                                           'utf-8'))
+                    my_digest.digest
 
-                    #FALTA COMPARAR CONTRASEÑAS!!!!
+                    if hresponse == my_digest.hexdigest():
+                        self.client_list = []
+                        self.client_list.append(IP_CLIENT)
+                        self.client_list.append(self.PORT)
+                        self.client_list.append(self.EXPIRES)
 
-                    self.client_list = []
-                    self.client_list.append(IP_CLIENT)
-                    self.client_list.append(self.PORT)
-                    self.client_list.append(self.EXPIRES)
+                        self.client_dic[self.USER] = self.client_list
+                        #Vaciamos:
+                        self.client_list = []
 
-                    self.client_dic[self.USER] = self.client_list
-                    #Vaciamos:
-                    self.client_list = []
+                        self.Client_Expired()
+                        self.register2json()
 
-                    answer = 'SIP/2.0 200 OK\r\n\r\n'
-                    #Enviamos el mensaje de respuesta:
-                    self.wfile.write(bytes(answer, 'utf-8'))
-                    #Añadimos al fichero LOG:
-                    FICH_LOG(PATH_LOG, 'Send to', IP_CLIENT,
-                             str(self.PORT), answer)
+                        answer = 'SIP/2.0 200 OK\r\n\r\n'
+                        #Enviamos el mensaje de respuesta:
+                        self.wfile.write(bytes(answer, 'utf-8'))
+                        #Añadimos al fichero LOG:
+                        FICH_LOG(PATH_LOG, 'Send to', IP_CLIENT,
+                                 str(self.PORT), answer)
 
-                    print('-----SENDING:\r\n' + answer)
+                        print('-----SENDING:\r\n' + answer)
+
+                    else:
+                        print('-----BAD PASSWORD FROM CLIENT')
+                        answer = 'SIP/2.0 400 Bad Request'
+                        self.wfile.write(bytes(answer, 'utf-8'))
+                        #Añadimos al fichero LOG:
+                        FICH_LOG(PATH_LOG, 'Error', IP_CLIENT,
+                                 str(self.PORT), '')
+
+                    self.NONCE.clear()
 
             elif method == 'INVITE':
+                self.json2registered()
+                self.Client_Expired()
+
                 #Definimos las variables:
                 USER = text.decode('utf-8').split()[1].split(':')[1]
                 RTP_PORT = text.decode('utf-8').split()[-2]
@@ -210,6 +232,9 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
                     print("-----SENDING: \r\n" + LINE)
 
             elif method == 'ACK':
+                self.json2registered()
+                self.Client_Expired()
+
                 USER = text.decode('utf-8').split()[1].split(':')[1]
                 #Buscamos del DIC: IP y PORT:
                 IP_SERV = self.client_dic[USER][0]
@@ -239,6 +264,9 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
                     FICH_LOG(PATH_LOG, 'Error', IP_SERV, PORT_SERV, '')
 
             elif method == 'BYE':
+                self.json2registered()
+                self.Client_Expired()
+
                 #Buscamos del DIC: IP y PORT:
                 USER = text.decode('utf-8').split()[1].split(':')[1]
                 IP_SERV = self.client_dic[USER][0]
@@ -276,12 +304,27 @@ class ProxyRegistrarHandler(socketserver.DatagramRequestHandler):
                     FICH_LOG(PATH_LOG, 'Error', IP_SERV, PORT_SERV, '')
 
             else:
+                self.json2registered()
+                self.Client_Expired()
+
                 answer = 'SIP/2.0 400 Bad Resquest\r\n\r\n'
                 self.wfile.write(bytes(answer, 'utf-8'))
 
                 #Escribimos en el fichero LOG:
                 FICH_LOG(PATH_LOG, 'Error', IP_SERV, PORT_SERV, '')
 
+    def Client_Expired(self):
+        """Comprueba si un antiguo cliente sigue en el diccionario."""
+        now = time.strftime("%Y-%m-%d %H:%M:%S",
+                            time.gmtime(time.time()))
+        expired_dic = []
+        for client in self.client_dic:
+            if self.client_dic[client][2] < now:
+                expired_dic.append(client)
+        for client in expired_dic:
+            del self.client_dic[client]
+
+        return self.client_dic
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
